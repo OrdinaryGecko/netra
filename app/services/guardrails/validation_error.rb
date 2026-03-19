@@ -7,7 +7,4 @@ module Guardrails
       super("invalid_request")
     end
   end
-
-  class PolicyNotFoundError < StandardError; end
-  class ProviderError < StandardError; end
 end
