@@ -27,6 +27,16 @@ module V1
         end
       end
 
+      def update
+        policy_set = PolicySet.find(params[:id])
+
+        if policy_set.update(policy_set_params)
+          render json: policy_set.as_json, status: :ok
+        else
+          render_error("invalid_policy_set", status: :unprocessable_entity, details: policy_set.errors.full_messages)
+        end
+      end
+
       private
 
       def policy_set_params

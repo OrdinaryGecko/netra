@@ -10,8 +10,6 @@ module Guardrails
       @agent = agent
       @request_payload = request_payload
       @trace_id = SecureRandom.uuid
-      @reasons = []
-      @masked = false
     end
 
     def call
@@ -22,14 +20,14 @@ module Guardrails
       )
 
       request_record = build_request!(policy_version:)
-      decision = evaluate_stage!(
-        request_record:,
+      input_decision = evaluate_stage!(
         rules: policy_version.rules.enabled.where(stage: "input"),
         content: combined_input
       )
+      persist_evaluations!(request_record:, evaluations: input_decision[:evaluations])
 
-      if decision[:blocked]
-        finalize_block!(request_record:, policy_version:)
+      if input_decision[:blocked]
+        finalize_block!(request_record:, policy_version:, reasons: input_decision[:reasons])
       else
         provider_response = Providers::Factory.build(
           provider: @request_payload[:provider],
@@ -39,20 +37,26 @@ module Guardrails
 
         output_text = provider_response[:content]
         output_decision = evaluate_stage!(
-          request_record:,
           rules: policy_version.rules.enabled.where(stage: "output"),
           content: output_text,
           provider_response:
         )
+        persist_evaluations!(request_record:, evaluations: output_decision[:evaluations])
 
         if output_decision[:blocked]
           request_record.update!(response_payload: provider_response)
-          finalize_block!(request_record:, policy_version:)
+          finalize_block!(
+            request_record:,
+            policy_version:,
+            reasons: input_decision[:reasons] + output_decision[:reasons]
+          )
         else
           finalize_success!(
             request_record:,
             policy_version:,
-            provider_response: provider_response.merge(content: maybe_mask(output_text))
+            provider_response: masked_response(provider_response, output_text, output_decision[:masked]),
+            reasons: input_decision[:reasons] + output_decision[:reasons],
+            masked: output_decision[:masked]
           )
         end
       end
@@ -84,40 +88,27 @@ module Guardrails
       )
     end
 
-    def evaluate_stage!(request_record:, rules:, content:, provider_response: nil)
-      blocked = false
-
-      rules.each do |rule|
-        started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        outcome, details = Guardrails::RuleEvaluator.call(rule:, content:, options: @request_payload[:options] || {})
-        latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round
-
-        if outcome == "matched"
-          @reasons << rule.name
-          blocked = true if rule.action == "block"
-          @masked ||= rule.action == "mask"
-        end
-
-        request_record.guardrail_evaluations.create!(
-          stage: rule.stage,
-          rule_name: rule.name,
-          rule_kind: rule.kind,
-          outcome:,
-          action: rule.action,
-          details: details.merge(provider_response: provider_response&.slice(:provider, :model)),
-          latency_ms:
-        )
-      end
-
-      { blocked: }
+    def evaluate_stage!(rules:, content:, provider_response: nil)
+      Evaluator.call(
+        rules:,
+        content:,
+        options: @request_payload[:options] || {},
+        provider_response:
+      )
     end
 
-    def finalize_block!(request_record:, policy_version:)
+    def persist_evaluations!(request_record:, evaluations:)
+      evaluations.each do |evaluation|
+        request_record.guardrail_evaluations.create!(evaluation)
+      end
+    end
+
+    def finalize_block!(request_record:, policy_version:, reasons:)
       request_record.update!(
         status: "blocked",
         decision: {
           action: "block",
-          reasons: @reasons,
+          reasons:,
           policy_version: policy_version.version
         }
       )
@@ -125,7 +116,7 @@ module Guardrails
       Result.new(
         status: "blocked",
         action: "block",
-        reasons: @reasons,
+        reasons:,
         trace_id: @trace_id,
         policy_version: policy_version.version,
         provider_response: nil,
@@ -133,8 +124,8 @@ module Guardrails
       )
     end
 
-    def finalize_success!(request_record:, policy_version:, provider_response:)
-      action = @masked ? "mask" : "allow"
+    def finalize_success!(request_record:, policy_version:, provider_response:, reasons:, masked:)
+      action = masked ? "mask" : "allow"
       status = "allowed"
       final_response = provider_response.dup
 
@@ -143,7 +134,7 @@ module Guardrails
         response_payload: final_response,
         decision: {
           action:,
-          reasons: @reasons,
+          reasons:,
           policy_version: policy_version.version
         }
       )
@@ -151,7 +142,7 @@ module Guardrails
       Result.new(
         status:,
         action:,
-        reasons: @reasons,
+        reasons:,
         trace_id: @trace_id,
         policy_version: policy_version.version,
         provider_response: final_response,
@@ -171,8 +162,10 @@ module Guardrails
       @request_payload[:environment]
     end
 
-    def maybe_mask(text)
-      @masked ? Masker.mask(text) : text
+    def masked_response(provider_response, output_text, masked)
+      return provider_response unless masked
+
+      provider_response.merge(content: Masker.mask(output_text))
     end
   end
 end

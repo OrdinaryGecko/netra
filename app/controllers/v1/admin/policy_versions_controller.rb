@@ -1,11 +1,77 @@
 module V1
   module Admin
     class PolicyVersionsController < BaseController
+      def show
+        policy_version = PolicyVersion.includes(:rules).find(params[:id])
+        render json: serialize_policy_version(policy_version)
+      end
+
+      def create
+        policy_set = PolicySet.find(policy_version_params[:policy_set_id])
+        policy_version = policy_set.policy_versions.new(policy_version_params.except(:policy_set_id))
+
+        if policy_version.save
+          render json: serialize_policy_version(policy_version), status: :created
+        else
+          render_error("invalid_policy_version", status: :unprocessable_entity, details: policy_version.errors.full_messages)
+        end
+      end
+
+      def update
+        policy_version = PolicyVersion.find(params[:id])
+
+        if policy_version.update(policy_version_params.except(:policy_set_id))
+          render json: serialize_policy_version(policy_version), status: :ok
+        else
+          render_error("invalid_policy_version", status: :unprocessable_entity, details: policy_version.errors.full_messages)
+        end
+      end
+
       def publish
         policy_version = PolicyVersion.find(params[:id])
         policy_version.publish!
 
-        render json: policy_version.as_json, status: :ok
+        render json: serialize_policy_version(policy_version), status: :ok
+      end
+
+      def test
+        policy_version = PolicyVersion.includes(:rules, :policy_set).find(params[:id])
+        result = Guardrails::PolicyVersionTester.call(
+          policy_version:,
+          request_payload: test_params.to_h.deep_symbolize_keys
+        )
+
+        render json: result.as_json, status: :ok
+      rescue Guardrails::ValidationError => e
+        render_error("invalid_request", status: :unprocessable_entity, details: e.errors)
+      end
+
+      private
+
+      def serialize_policy_version(policy_version)
+        policy_version.as_json(include: { rules: {} })
+      end
+
+      def policy_version_params
+        params.require(:policy_version).permit(:policy_set_id, :version, :status, definition: {})
+      end
+
+      def test_params
+        params.permit(
+          :provider,
+          :model,
+          :execute_provider,
+          options: {},
+          messages: %i[role content]
+        ).tap do |payload|
+          payload[:environment] ||= policy_version_environment
+        end
+      end
+
+      def policy_version_environment
+        @policy_version_environment ||= PolicyVersion.joins(:policy_set)
+          .where(id: params[:id])
+          .pick("policy_sets.environment")
       end
     end
   end

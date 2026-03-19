@@ -5,10 +5,12 @@ Rails.application.routes.draw do
     post :guarded_completions, to: "guarded_completions#create"
 
     namespace :admin do
-      resources :policy_sets, only: %i[index create show]
-      resources :policy_versions, only: [] do
+      resources :policy_sets, only: %i[index create show update]
+      resources :policy_versions, only: %i[create update show] do
         post :publish, on: :member
+        post :test, on: :member
       end
+      resources :rules, only: %i[create update destroy]
     end
   end
 end

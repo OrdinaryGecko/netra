@@ -1,9 +1,9 @@
 module Guardrails
   class Result
     attr_reader :status, :action, :reasons, :trace_id, :policy_version,
-      :provider_response, :messages
+      :provider_response, :messages, :evaluations, :dry_run
 
-    def initialize(status:, action:, reasons:, trace_id:, policy_version:, provider_response:, messages:)
+    def initialize(status:, action:, reasons:, trace_id:, policy_version:, provider_response:, messages:, evaluations: nil, dry_run: false)
       @status = status
       @action = action
       @reasons = reasons
@@ -11,6 +11,8 @@ module Guardrails
       @policy_version = policy_version
       @provider_response = provider_response
       @messages = messages
+      @evaluations = evaluations
+      @dry_run = dry_run
     end
 
     def http_status
@@ -25,8 +27,11 @@ module Guardrails
         trace_id:,
         policy_version:,
         messages:,
-        provider_response:
-      }
+        provider_response:,
+        dry_run:
+      }.tap do |payload|
+        payload[:evaluations] = evaluations if evaluations.present?
+      end
     end
   end
 end
