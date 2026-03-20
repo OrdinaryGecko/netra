@@ -1,15 +1,16 @@
 # Netra
 
-Netra is a backend-only Rails MVP for AI guardrails. It sits between an agent
-and an LLM provider, resolves the active policy version for the caller, runs
+Netra is a Rails guardrails MVP for AI middleware. It sits between an agent and
+an LLM provider, resolves the active policy version for the caller, runs
 deterministic checks on both the input and the output, and returns an audited
-decision.
+decision. It now includes both JSON APIs and a Hotwire admin console.
 
 ## Current MVP
 
 - API-key protected `POST /v1/guarded_completions`
 - Versioned policy sets and rules persisted in PostgreSQL
 - Admin APIs to create and update policy sets, policy versions, and rules
+- Hotwire admin console at `/admin`
 - Dry-run policy evaluation for draft versions
 - Deterministic guardrails:
   - maximum prompt size
@@ -36,6 +37,12 @@ decision.
 bundle install
 bin/rails db:create db:migrate db:seed
 bin/rails server
+```
+
+Then open:
+
+```text
+http://localhost:3000/admin/session/new
 ```
 
 The seed task creates:
@@ -70,6 +77,10 @@ curl -X POST http://localhost:3000/v1/guarded_completions \
 ```
 
 ## Admin examples
+
+The browser-based admin console uses the seeded admin API key and stores a
+server-side session after login. The JSON admin APIs remain available under
+`/v1/admin/*`.
 
 Create a draft policy version:
 
@@ -127,6 +138,8 @@ curl -X POST http://localhost:3000/v1/admin/policy_versions/1/clone \
 - OpenAI support is scaffolded through the provider adapter interface and can be
   extended without changing the policy pipeline.
 - Admin APIs require an admin-scoped API key.
+- The Hotwire admin console signs in with an admin API key and provides draft
+  editing, cloning, publishing, rule management, and dry-run testing.
 - Active and archived policy versions are treated as immutable; mutate draft
   versions or clone an existing version into a draft first.
 - This app is designed as a modular monolith so frontend or async features can

@@ -1,0 +1,86 @@
+<%= render "admin/shared/shell" do %>
+  <section class="hero">
+    <p class="badge"><%= @policy_set.environment %></p>
+    <h2><%= @policy_set.name %></h2>
+    <p>
+      Policy set for <span class="code"><%= current_client_application.key %></span>.
+      Active versions are immutable; clone them into drafts before editing.
+    </p>
+  </section>
+
+  <div class="grid">
+    <section class="card card--half">
+      <h3>Edit policy set</h3>
+      <%= form_with model: [:admin, @policy_set], method: :patch do |form| %>
+        <label>
+          Name
+          <%= form.text_field :name %>
+        </label>
+        <label>
+          Environment
+          <%= form.text_field :environment %>
+        </label>
+        <label class="row">
+          <%= form.check_box :active %>
+          Active
+        </label>
+        <%= form.submit "Save policy set" %>
+      <% end %>
+    </section>
+
+    <section class="card card--half">
+      <h3>Create draft version</h3>
+      <%= form_with url: admin_policy_versions_path, method: :post, data: { controller: "json-editor" } do |form| %>
+        <%= form.hidden_field :policy_set_id, name: "policy_version[policy_set_id]", value: @policy_set.id %>
+        <label>
+          Version
+          <%= form.text_field :version, name: "policy_version[version]", placeholder: "2026-03-20.2" %>
+        </label>
+        <label>
+          Status
+          <%= form.select :status, options_for_select([["Draft", "draft"]], @new_policy_version.status), {}, name: "policy_version[status]" %>
+        </label>
+        <label>
+          Definition JSON
+          <%= text_area_tag "policy_version[definition_json]", JSON.pretty_generate(description: "Candidate policy"), data: { json_editor_target: "input" } %>
+        </label>
+        <div class="row">
+          <button type="button" class="button button--ghost" data-action="json-editor#format">Format JSON</button>
+          <%= form.submit "Create draft" %>
+        </div>
+      <% end %>
+    </section>
+
+    <section class="card">
+      <div class="spread">
+        <h3>Versions</h3>
+        <span class="muted"><%= pluralize(@policy_set.policy_versions.size, "version") %></span>
+      </div>
+
+      <% if @policy_set.policy_versions.any? %>
+        <div class="stack">
+          <% @policy_set.policy_versions.order(created_at: :desc).each do |policy_version| %>
+            <div class="rule-card">
+              <div class="spread">
+                <div>
+                  <div class="row">
+                    <strong><%= policy_version.version %></strong>
+                    <span class="badge badge--<%= policy_version.status %>"><%= policy_version.status %></span>
+                  </div>
+                  <p class="muted">
+                    <%= policy_version.definition["description"].presence || "No description" %>
+                  </p>
+                </div>
+                <%= link_to "Open", admin_policy_version_path(policy_version), class: "button button--ghost" %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="empty-state">
+          <p>No policy versions yet.</p>
+        </div>
+      <% end %>
+    </section>
+  </div>
+<% end %>

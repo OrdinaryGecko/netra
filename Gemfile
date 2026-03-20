@@ -6,6 +6,9 @@ gem "rails", "~> 8.1.2"
 gem "pg", "~> 1.1"
 # Use the Puma web server [https://github.com/puma/puma]
 gem "puma", ">= 5.0"
+gem "importmap-rails"
+gem "stimulus-rails"
+gem "turbo-rails"
 gem "json_schemer"
 gem "rack-cors"
 

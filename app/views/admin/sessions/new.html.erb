@@ -1,0 +1,25 @@
+<div class="auth-shell">
+  <div class="auth-card">
+    <div class="stack">
+      <div>
+        <p class="badge">Admin Console</p>
+        <h1>Sign in with an admin API key</h1>
+        <p class="muted">
+          This UI uses the same admin-scoped key model as the backend API. Enter a seeded or issued admin key to manage drafts, rules, publishing, and dry-runs.
+        </p>
+      </div>
+
+      <% flash.each do |type, message| %>
+        <div class="flash flash--<%= type %>"><%= message %></div>
+      <% end %>
+
+      <%= form_with url: admin_session_path, method: :post do |form| %>
+        <label>
+          Admin API key
+          <%= form.password_field :api_key, autofocus: true, placeholder: "Paste admin key" %>
+        </label>
+        <%= form.submit "Enter console" %>
+      <% end %>
+    </div>
+  </div>
+</div>

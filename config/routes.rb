@@ -1,4 +1,17 @@
 Rails.application.routes.draw do
+  root "admin/policy_sets#index"
+
+  namespace :admin do
+    resource :session, only: %i[new create destroy]
+    resources :policy_sets, only: %i[index show create update]
+    resources :policy_versions, only: %i[show create update] do
+      post :publish, on: :member
+      post :clone, on: :member
+      post :dry_run, on: :member
+    end
+    resources :rules, only: %i[create update destroy]
+  end
+
   get "up" => "rails/health#show", as: :rails_health_check
 
   namespace :v1 do

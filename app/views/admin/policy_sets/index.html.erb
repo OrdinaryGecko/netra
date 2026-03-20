@@ -1,0 +1,28 @@
+<%= render "admin/shared/shell" do %>
+  <section class="hero">
+    <p class="badge">No policy sets</p>
+    <h2>Start with a policy set.</h2>
+    <p>Create the first environment-scoped policy container for this application. Versions and rules hang off that object.</p>
+  </section>
+
+  <div class="grid">
+    <section class="card card--half">
+      <h3>Create policy set</h3>
+      <%= form_with model: [:admin, @policy_set] do |form| %>
+        <label>
+          Name
+          <%= form.text_field :name, placeholder: "default" %>
+        </label>
+        <label>
+          Environment
+          <%= form.text_field :environment, placeholder: "development" %>
+        </label>
+        <label class="row">
+          <%= form.check_box :active %>
+          Active
+        </label>
+        <%= form.submit "Create policy set" %>
+      <% end %>
+    </section>
+  </div>
+<% end %>

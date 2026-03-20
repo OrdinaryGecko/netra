@@ -1,0 +1,28 @@
+<% if local_assigns[:errors].present? %>
+  <div class="flash flash--alert">
+    <%= errors.to_sentence %>
+  </div>
+<% elsif result.present? %>
+  <div class="stack">
+    <div class="row">
+      <span class="badge badge--<%= result.status %>"><%= result.status %></span>
+      <span class="badge"><%= result.action %></span>
+      <span class="code"><%= result.trace_id %></span>
+    </div>
+
+    <div class="rule-card">
+      <h4>Reasons</h4>
+      <p class="muted"><%= result.reasons.presence&.join(", ") || "No rule matches" %></p>
+    </div>
+
+    <div class="rule-card">
+      <h4>Provider response</h4>
+      <pre><%= JSON.pretty_generate(result.provider_response || {}) %></pre>
+    </div>
+
+    <div class="rule-card">
+      <h4>Evaluations</h4>
+      <pre><%= JSON.pretty_generate(result.evaluations || []) %></pre>
+    </div>
+  </div>
+<% end %>

@@ -1,0 +1,192 @@
+<%= render "admin/shared/shell" do %>
+  <section class="hero">
+    <div class="spread">
+      <div>
+        <p class="badge badge--<%= @policy_version.status %>"><%= @policy_version.status %></p>
+        <h2><%= @policy_version.version %></h2>
+        <p>
+          Part of
+          <%= link_to @policy_set.name, admin_policy_set_path(@policy_set), class: "code" %>
+          in <span class="code"><%= @policy_set.environment %></span>.
+        </p>
+      </div>
+      <div class="row">
+        <% unless @policy_version.status == "active" %>
+          <%= button_to "Publish", publish_admin_policy_version_path(@policy_version), method: :post, class: "button" %>
+        <% end %>
+      </div>
+    </div>
+  </section>
+
+  <div class="grid">
+    <section class="card card--half">
+      <h3>Version details</h3>
+      <%= form_with model: [:admin, @policy_version], method: :patch, data: { controller: "json-editor" } do |form| %>
+        <label>
+          Version
+          <%= form.text_field :version, disabled: @policy_version.status != "draft" %>
+        </label>
+        <label>
+          Definition JSON
+          <%= text_area_tag "policy_version[definition_json]", JSON.pretty_generate(@policy_version.definition), disabled: @policy_version.status != "draft", data: { json_editor_target: "input" } %>
+        </label>
+        <div class="row">
+          <button type="button" class="button button--ghost" data-action="json-editor#format">Format JSON</button>
+          <%= form.submit "Save version", disabled: @policy_version.status != "draft" %>
+        </div>
+      <% end %>
+    </section>
+
+    <section class="card card--half">
+      <h3>Clone into draft</h3>
+      <%= form_with url: clone_admin_policy_version_path(@policy_version), method: :post, data: { controller: "json-editor" } do |form| %>
+        <label>
+          New version
+          <%= form.text_field :version, name: "policy_version[version]", placeholder: "#{@policy_version.version}-draft" %>
+        </label>
+        <label>
+          Definition JSON override
+          <%= text_area_tag "policy_version[definition_json]", JSON.pretty_generate(@policy_version.definition), data: { json_editor_target: "input" } %>
+        </label>
+        <div class="row">
+          <button type="button" class="button button--ghost" data-action="json-editor#format">Format JSON</button>
+          <%= form.submit "Clone draft" %>
+        </div>
+      <% end %>
+    </section>
+
+    <section class="card">
+      <div class="spread">
+        <h3>Rules</h3>
+        <span class="muted"><%= pluralize(@policy_version.rules.size, "rule") %></span>
+      </div>
+
+      <div class="rule-list">
+        <% @policy_version.rules.each do |rule| %>
+          <div class="rule-card">
+            <%= form_with url: admin_rule_path(rule), method: :patch, data: { controller: "json-editor" } do |form| %>
+              <div class="grid">
+                <div class="card--third">
+                  <label>
+                    Name
+                    <%= form.text_field :name, disabled: @policy_version.status != "draft" %>
+                  </label>
+                </div>
+                <div class="card--third">
+                  <label>
+                    Kind
+                    <%= form.select :kind, options_for_select(Rule::KINDS.map { |kind| [kind.humanize, kind] }, rule.kind), {}, disabled: @policy_version.status != "draft" %>
+                  </label>
+                </div>
+                <div class="card--third">
+                  <label>
+                    Stage
+                    <%= form.select :stage, options_for_select(Rule::STAGES.map { |stage| [stage.humanize, stage] }, rule.stage), {}, disabled: @policy_version.status != "draft" %>
+                  </label>
+                </div>
+                <div class="card--third">
+                  <label>
+                    Action
+                    <%= form.select :action, options_for_select(Rule::ACTIONS.map { |action| [action.humanize, action] }, rule.action), {}, disabled: @policy_version.status != "draft" %>
+                  </label>
+                </div>
+                <div class="card--third">
+                  <label>
+                    Priority
+                    <%= form.number_field :priority, disabled: @policy_version.status != "draft" %>
+                  </label>
+                </div>
+                <div class="card--third">
+                  <label class="row">
+                    <%= form.check_box :enabled, disabled: @policy_version.status != "draft" %>
+                    Enabled
+                  </label>
+                </div>
+              </div>
+
+              <label>
+                Config JSON
+                <%= text_area_tag "rule[config_json]", JSON.pretty_generate(rule.config), disabled: @policy_version.status != "draft", data: { json_editor_target: "input" } %>
+              </label>
+
+              <div class="row">
+                <button type="button" class="button button--ghost" data-action="json-editor#format">Format JSON</button>
+                <%= form.submit "Save rule", disabled: @policy_version.status != "draft" %>
+                <% if @policy_version.status == "draft" %>
+                  <%= link_to "Delete", admin_rule_path(rule), class: "button button--danger", data: { turbo_method: :delete, turbo_confirm: "Delete this rule?" } %>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </section>
+
+    <section class="card card--half">
+      <h3>Add rule</h3>
+      <%= form_with url: admin_rules_path, method: :post, data: { controller: "json-editor" } do |form| %>
+        <%= hidden_field_tag "rule[policy_version_id]", @policy_version.id %>
+        <label>
+          Name
+          <%= form.text_field :name, name: "rule[name]", placeholder: "block-sensitive-topics", disabled: @policy_version.status != "draft" %>
+        </label>
+        <div class="grid">
+          <div class="card--third">
+            <label>
+              Kind
+              <%= select_tag "rule[kind]", options_for_select(Rule::KINDS.map { |kind| [kind.humanize, kind] }), disabled: @policy_version.status != "draft" %>
+            </label>
+          </div>
+          <div class="card--third">
+            <label>
+              Stage
+              <%= select_tag "rule[stage]", options_for_select(Rule::STAGES.map { |stage| [stage.humanize, stage] }), disabled: @policy_version.status != "draft" %>
+            </label>
+          </div>
+          <div class="card--third">
+            <label>
+              Action
+              <%= select_tag "rule[action]", options_for_select(Rule::ACTIONS.map { |action| [action.humanize, action] }), disabled: @policy_version.status != "draft" %>
+            </label>
+          </div>
+        </div>
+        <label>
+          Priority
+          <%= number_field_tag "rule[priority]", 100, disabled: @policy_version.status != "draft" %>
+        </label>
+        <label class="row">
+          <%= check_box_tag "rule[enabled]", true, true, disabled: @policy_version.status != "draft" %>
+          Enabled
+        </label>
+        <label>
+          Config JSON
+          <%= text_area_tag "rule[config_json]", JSON.pretty_generate({}), disabled: @policy_version.status != "draft", data: { json_editor_target: "input" } %>
+        </label>
+        <div class="row">
+          <button type="button" class="button button--ghost" data-action="json-editor#format">Format JSON</button>
+          <%= form.submit "Create rule", disabled: @policy_version.status != "draft" %>
+        </div>
+      <% end %>
+    </section>
+
+    <section class="card card--half">
+      <h3>Dry run policy version</h3>
+      <%= form_with url: dry_run_admin_policy_version_path(@policy_version), method: :post, data: { turbo_frame: "dry_run_result", controller: "json-editor" } do %>
+        <label>
+          Request payload JSON
+          <%= text_area_tag "dry_run[payload_json]", @dry_run_payload, data: { json_editor_target: "input" } %>
+        </label>
+        <div class="row">
+          <button type="button" class="button button--ghost" data-action="json-editor#format">Format JSON</button>
+          <%= submit_tag "Run dry test" %>
+        </div>
+      <% end %>
+
+      <%= turbo_frame_tag "dry_run_result" do %>
+        <div class="empty-state">
+          <p>No dry-run yet. Submit a payload to inspect the current policy behavior.</p>
+        </div>
+      <% end %>
+    </section>
+  </div>
+<% end %>
