@@ -150,7 +150,7 @@
       <div class="rule-list">
         <% @policy_version.rules.each do |rule| %>
           <div class="rule-card">
-            <%= form_with url: admin_rule_path(rule), method: :patch, data: { controller: "json-editor rule-form" } do |form| %>
+            <%= form_with model: rule, scope: :rule, url: admin_rule_path(rule), method: :patch, data: { controller: "json-editor rule-form" } do |form| %>
               <div class="grid">
                 <div class="card--third">
                   <label>
@@ -195,6 +195,9 @@
                 <%= text_area_tag "rule[config_json]", JSON.pretty_generate(rule.config), disabled: @policy_version.status != "draft", data: { json_editor_target: "input", rule_form_target: "config" } %>
               </label>
               <p class="microcopy" data-rule-form-target="summary"></p>
+              <% if rule.stage == "input" %>
+                <p class="microcopy">Input rules should normally use <span class="code">block</span> or <span class="code">log_only</span>. <span class="code">mask</span> is output-only.</p>
+              <% end %>
 
               <div class="row">
                 <button type="button" class="button button--ghost" data-action="json-editor#format">Format JSON</button>

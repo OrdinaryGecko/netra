@@ -70,4 +70,26 @@ class AdminRulesTest < ActionDispatch::IntegrationTest
 
     assert_response :unprocessable_entity
   end
+
+  test "rejects mask action for input rules" do
+    post "/v1/admin/rules",
+      params: {
+        rule: {
+          policy_version_id: @policy_version.id,
+          name: "bad-input-mask",
+          kind: "max_message_chars",
+          stage: "input",
+          action: "mask",
+          priority: 20,
+          enabled: true,
+          config: { max: 30 }
+        }
+      },
+      as: :json,
+      headers: { "X-Api-Key" => @admin_key }
+
+    assert_response :unprocessable_entity
+    body = JSON.parse(response.body)
+    assert_match(/output-stage/, body["details"].join)
+  end
 end
