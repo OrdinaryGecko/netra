@@ -33,4 +33,27 @@ class AdminWebFlowTest < ActionDispatch::IntegrationTest
     assert_match "Version comparison", response.body
     assert_match "Use template", response.body
   end
+
+  test "updates a rule through the web workflow" do
+    post "/admin/session", params: { api_key: @admin_key }
+
+    patch "/admin/rules/#{@policy_version.rules.first.id}",
+      params: {
+        rule: {
+          name: "block-injection",
+          kind: "keyword_blocklist",
+          stage: "input",
+          action: "block",
+          priority: 15,
+          enabled: "1",
+          config_json: JSON.generate(keywords: ["ignore previous instructions", "reveal system prompt"])
+        }
+      }
+
+    assert_redirected_to admin_policy_version_path(@policy_version)
+    @policy_version.rules.first.reload
+    assert_equal "block", @policy_version.rules.first.action
+    assert_equal true, @policy_version.rules.first.enabled
+    assert_equal 15, @policy_version.rules.first.priority
+  end
 end

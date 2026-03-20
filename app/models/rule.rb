@@ -10,7 +10,6 @@ class Rule < ApplicationRecord
   validates :stage, inclusion: { in: STAGES }
   validates :action, inclusion: { in: ACTIONS }
   validate :policy_version_must_be_draft
-  validate :mask_requires_output_stage
 
   before_destroy :ensure_policy_version_mutable!
 
@@ -30,12 +29,5 @@ class Rule < ApplicationRecord
 
     errors.add(:base, "rules can only be removed from draft policy versions")
     throw(:abort)
-  end
-
-  def mask_requires_output_stage
-    return unless action == "mask"
-    return if stage == "output"
-
-    errors.add(:action, "mask is only supported for output-stage rules")
   end
 end
