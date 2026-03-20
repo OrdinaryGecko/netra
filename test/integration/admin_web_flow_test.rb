@@ -30,5 +30,7 @@ class AdminWebFlowTest < ActionDispatch::IntegrationTest
     assert_match @policy_version.version, response.body
     assert_match "Dry run policy version", response.body
     assert_match "Add rule", response.body
+    assert_match "Version comparison", response.body
+    assert_match "Use template", response.body
   end
 end

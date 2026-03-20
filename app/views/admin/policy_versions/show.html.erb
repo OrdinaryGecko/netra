@@ -19,6 +19,30 @@
   </section>
 
   <div class="grid">
+    <section class="card card--quarter">
+      <h3>Rules</h3>
+      <p class="metric"><%= @policy_version.rules.size %></p>
+      <p class="microcopy">Total rules in this version.</p>
+    </section>
+
+    <section class="card card--quarter">
+      <h3>Input checks</h3>
+      <p class="metric"><%= @policy_version.rules.count { |rule| rule.stage == "input" } %></p>
+      <p class="microcopy">Pre-provider enforcement rules.</p>
+    </section>
+
+    <section class="card card--quarter">
+      <h3>Output checks</h3>
+      <p class="metric"><%= @policy_version.rules.count { |rule| rule.stage == "output" } %></p>
+      <p class="microcopy">Post-provider response checks.</p>
+    </section>
+
+    <section class="card card--quarter">
+      <h3>Blocking rules</h3>
+      <p class="metric"><%= @policy_version.rules.count { |rule| rule.action == "block" } %></p>
+      <p class="microcopy">Rules that stop traffic outright.</p>
+    </section>
+
     <section class="card card--half">
       <h3>Version details</h3>
       <%= form_with model: [:admin, @policy_version], method: :patch, data: { controller: "json-editor" } do |form| %>
@@ -33,6 +57,68 @@
         <div class="row">
           <button type="button" class="button button--ghost" data-action="json-editor#format">Format JSON</button>
           <%= form.submit "Save version", disabled: @policy_version.status != "draft" %>
+        </div>
+      <% end %>
+    </section>
+
+    <section class="card card--half">
+      <h3>Version comparison</h3>
+      <% if @comparison.available? %>
+        <p class="muted">
+          Comparing against
+          <span class="code"><%= @comparison.baseline_version.version %></span>
+          (<%= @comparison.baseline_version.status %>).
+        </p>
+
+        <div class="grid">
+          <div class="card--third">
+            <p class="metric"><%= @comparison.added_rules.size %></p>
+            <p class="microcopy">Added rules</p>
+          </div>
+          <div class="card--third">
+            <p class="metric"><%= @comparison.changed_rules.size %></p>
+            <p class="microcopy">Changed rules</p>
+          </div>
+          <div class="card--third">
+            <p class="metric"><%= @comparison.removed_rules.size %></p>
+            <p class="microcopy">Removed rules</p>
+          </div>
+        </div>
+
+        <div class="comparison-list">
+          <% @comparison.added_rules.first(4).each do |name| %>
+            <div class="comparison-item">
+              <strong>Added</strong>
+              <div class="code"><%= name %></div>
+            </div>
+          <% end %>
+          <% @comparison.changed_rules.first(4).each do |change| %>
+            <div class="comparison-item">
+              <strong>Changed</strong>
+              <div class="code"><%= change[:name] %></div>
+              <div class="microcopy">
+                <%= change[:before][:action] %> → <%= change[:after][:action] %>,
+                priority <%= change[:before][:priority] %> → <%= change[:after][:priority] %>
+              </div>
+            </div>
+          <% end %>
+          <% @comparison.removed_rules.first(4).each do |name| %>
+            <div class="comparison-item">
+              <strong>Removed</strong>
+              <div class="code"><%= name %></div>
+            </div>
+          <% end %>
+
+          <% if @comparison.total_changes.zero? %>
+            <div class="comparison-item">
+              <strong>No rule deltas</strong>
+              <div class="microcopy">This version currently matches the comparison baseline.</div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="empty-state">
+          <p>No comparison baseline yet. Create or publish another version to see deltas.</p>
         </div>
       <% end %>
     </section>
@@ -64,7 +150,7 @@
       <div class="rule-list">
         <% @policy_version.rules.each do |rule| %>
           <div class="rule-card">
-            <%= form_with url: admin_rule_path(rule), method: :patch, data: { controller: "json-editor" } do |form| %>
+            <%= form_with url: admin_rule_path(rule), method: :patch, data: { controller: "json-editor rule-form" } do |form| %>
               <div class="grid">
                 <div class="card--third">
                   <label>
@@ -75,7 +161,7 @@
                 <div class="card--third">
                   <label>
                     Kind
-                    <%= form.select :kind, options_for_select(Rule::KINDS.map { |kind| [kind.humanize, kind] }, rule.kind), {}, disabled: @policy_version.status != "draft" %>
+                    <%= form.select :kind, options_for_select(Rule::KINDS.map { |kind| [kind.humanize, kind] }, rule.kind), {}, disabled: @policy_version.status != "draft", data: { rule_form_target: "kind", action: "rule-form#kindChanged" } %>
                   </label>
                 </div>
                 <div class="card--third">
@@ -106,11 +192,13 @@
 
               <label>
                 Config JSON
-                <%= text_area_tag "rule[config_json]", JSON.pretty_generate(rule.config), disabled: @policy_version.status != "draft", data: { json_editor_target: "input" } %>
+                <%= text_area_tag "rule[config_json]", JSON.pretty_generate(rule.config), disabled: @policy_version.status != "draft", data: { json_editor_target: "input", rule_form_target: "config" } %>
               </label>
+              <p class="microcopy" data-rule-form-target="summary"></p>
 
               <div class="row">
                 <button type="button" class="button button--ghost" data-action="json-editor#format">Format JSON</button>
+                <button type="button" class="button button--ghost" data-action="rule-form#applyTemplate" <%= "disabled" if @policy_version.status != "draft" %>>Use template</button>
                 <%= form.submit "Save rule", disabled: @policy_version.status != "draft" %>
                 <% if @policy_version.status == "draft" %>
                   <%= link_to "Delete", admin_rule_path(rule), class: "button button--danger", data: { turbo_method: :delete, turbo_confirm: "Delete this rule?" } %>
@@ -124,7 +212,7 @@
 
     <section class="card card--half">
       <h3>Add rule</h3>
-      <%= form_with url: admin_rules_path, method: :post, data: { controller: "json-editor" } do |form| %>
+      <%= form_with url: admin_rules_path, method: :post, data: { controller: "json-editor rule-form" } do |form| %>
         <%= hidden_field_tag "rule[policy_version_id]", @policy_version.id %>
         <label>
           Name
@@ -134,7 +222,7 @@
           <div class="card--third">
             <label>
               Kind
-              <%= select_tag "rule[kind]", options_for_select(Rule::KINDS.map { |kind| [kind.humanize, kind] }), disabled: @policy_version.status != "draft" %>
+              <%= select_tag "rule[kind]", options_for_select(Rule::KINDS.map { |kind| [kind.humanize, kind] }), disabled: @policy_version.status != "draft", data: { rule_form_target: "kind", action: "rule-form#kindChanged" } %>
             </label>
           </div>
           <div class="card--third">
@@ -160,10 +248,12 @@
         </label>
         <label>
           Config JSON
-          <%= text_area_tag "rule[config_json]", JSON.pretty_generate({}), disabled: @policy_version.status != "draft", data: { json_editor_target: "input" } %>
+          <%= text_area_tag "rule[config_json]", JSON.pretty_generate(max: 4000), disabled: @policy_version.status != "draft", data: { json_editor_target: "input", rule_form_target: "config" } %>
         </label>
+        <p class="microcopy" data-rule-form-target="summary"></p>
         <div class="row">
           <button type="button" class="button button--ghost" data-action="json-editor#format">Format JSON</button>
+          <button type="button" class="button button--ghost" data-action="rule-form#applyTemplate" <%= "disabled" if @policy_version.status != "draft" %>>Use template</button>
           <%= form.submit "Create rule", disabled: @policy_version.status != "draft" %>
         </div>
       <% end %>
@@ -171,10 +261,15 @@
 
     <section class="card card--half">
       <h3>Dry run policy version</h3>
-      <%= form_with url: dry_run_admin_policy_version_path(@policy_version), method: :post, data: { turbo_frame: "dry_run_result", controller: "json-editor" } do %>
+      <%= form_with url: dry_run_admin_policy_version_path(@policy_version), method: :post, data: { turbo_frame: "dry_run_result", controller: "json-editor rule-form" } do %>
+        <div class="row">
+          <button type="button" class="button button--ghost" data-action="rule-form#loadSafePayload">Safe JSON</button>
+          <button type="button" class="button button--ghost" data-action="rule-form#loadInjectionPayload">Injection attempt</button>
+          <button type="button" class="button button--ghost" data-action="rule-form#loadPiiPayload">PII output</button>
+        </div>
         <label>
           Request payload JSON
-          <%= text_area_tag "dry_run[payload_json]", @dry_run_payload, data: { json_editor_target: "input" } %>
+          <%= text_area_tag "dry_run[payload_json]", @dry_run_payload, data: { json_editor_target: "input", rule_form_target: "config" } %>
         </label>
         <div class="row">
           <button type="button" class="button button--ghost" data-action="json-editor#format">Format JSON</button>

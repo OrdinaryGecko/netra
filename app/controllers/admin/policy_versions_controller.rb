@@ -5,6 +5,10 @@ module Admin
     def show
       @policy_set = @policy_version.policy_set
       @dry_run_payload = JSON.pretty_generate(default_dry_run_payload)
+      @comparison = Admin::PolicyVersionComparison.new(
+        current_version: @policy_version,
+        baseline_version: comparison_baseline
+      )
     end
 
     def create
@@ -103,6 +107,19 @@ module Admin
           }
         }
       }
+    end
+
+    def comparison_baseline
+      return active_comparison_version if active_comparison_version
+
+      @policy_set.policy_versions.where.not(id: @policy_version.id).order(created_at: :desc).first
+    end
+
+    def active_comparison_version
+      @active_comparison_version ||= @policy_set.policy_versions.find_by(status: "active")
+      return nil if @active_comparison_version == @policy_version
+
+      @active_comparison_version
     end
   end
 end
