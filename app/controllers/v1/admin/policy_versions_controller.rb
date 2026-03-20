@@ -1,6 +1,6 @@
 module V1
   module Admin
-    class PolicyVersionsController < BaseController
+    class PolicyVersionsController < Admin::BaseController
       def show
         policy_version = PolicyVersion.includes(:rules).find(params[:id])
         render json: serialize_policy_version(policy_version)
@@ -34,6 +34,18 @@ module V1
         render json: serialize_policy_version(policy_version), status: :ok
       end
 
+      def clone
+        policy_version = PolicyVersion.includes(:rules).find(params[:id])
+        cloned_version = policy_version.clone_to_draft!(
+          version: clone_params[:version],
+          definition: clone_params[:definition]
+        )
+
+        render json: serialize_policy_version(cloned_version), status: :created
+      rescue ActiveRecord::RecordInvalid => e
+        render_error("invalid_policy_version", status: :unprocessable_entity, details: e.record.errors.full_messages)
+      end
+
       def test
         policy_version = PolicyVersion.includes(:rules, :policy_set).find(params[:id])
         result = Guardrails::PolicyVersionTester.call(
@@ -44,6 +56,8 @@ module V1
         render json: result.as_json, status: :ok
       rescue Guardrails::ValidationError => e
         render_error("invalid_request", status: :unprocessable_entity, details: e.errors)
+      rescue ActiveRecord::RecordInvalid => e
+        render_error("invalid_policy_version", status: :unprocessable_entity, details: e.record.errors.full_messages)
       end
 
       private
@@ -54,6 +68,10 @@ module V1
 
       def policy_version_params
         params.require(:policy_version).permit(:policy_set_id, :version, :status, definition: {})
+      end
+
+      def clone_params
+        params.fetch(:policy_version, {}).permit(:version, definition: {})
       end
 
       def test_params

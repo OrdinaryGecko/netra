@@ -24,13 +24,7 @@ module V1
     private
 
     def authenticate_api_key!
-      raw_token = request.headers["X-Api-Key"].to_s
-      api_key = ApiKey.authenticate(raw_token)
-
-      return Current.api_key = api_key if api_key&.active?
-
-      render_error("unauthorized", status: :unauthorized)
-      nil
+      super
     end
 
     def client_application

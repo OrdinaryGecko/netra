@@ -1,6 +1,6 @@
 module V1
   module Admin
-    class PolicySetsController < BaseController
+    class PolicySetsController < Admin::BaseController
       def index
         policy_sets = PolicySet.includes(:policy_versions).order(:name)
         render json: policy_sets.as_json(include: { policy_versions: { only: %i[id version status published_at] } })

@@ -67,3 +67,9 @@ unless api_key
   api_key, plaintext = ApiKey.issue!(client_application:, name: "Seeded development key")
   puts "Seeded API key: #{plaintext}"
 end
+
+admin_key = client_application.api_keys.find_by(name: "Seeded admin key")
+unless admin_key
+  admin_key, plaintext = ApiKey.issue!(client_application:, name: "Seeded admin key", access_level: "admin")
+  puts "Seeded admin API key: #{plaintext}"
+end

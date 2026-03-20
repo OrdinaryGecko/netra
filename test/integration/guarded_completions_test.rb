@@ -5,7 +5,7 @@ class GuardedCompletionsTest < ActionDispatch::IntegrationTest
     @client_application = ClientApplication.create!(name: "Test App", key: "test-app")
     @agent = @client_application.agents.create!(name: "Assistant", identifier: "assistant")
     @policy_set = @client_application.policy_sets.create!(name: "default", environment: "test")
-    @policy_version = @policy_set.policy_versions.create!(version: "1", status: "active")
+    @policy_version = @policy_set.policy_versions.create!(version: "1", status: "draft")
     @policy_version.rules.create!(
       name: "max-input",
       kind: "max_message_chars",
@@ -22,6 +22,7 @@ class GuardedCompletionsTest < ActionDispatch::IntegrationTest
       priority: 20,
       config: {}
     )
+    @policy_version.publish!
     _, @plaintext_key = ApiKey.issue!(client_application: @client_application, name: "Test key")
   end
 

@@ -8,6 +8,7 @@ Rails.application.routes.draw do
       resources :policy_sets, only: %i[index create show update]
       resources :policy_versions, only: %i[create update show] do
         post :publish, on: :member
+        post :clone, on: :member
         post :test, on: :member
       end
       resources :rules, only: %i[create update destroy]

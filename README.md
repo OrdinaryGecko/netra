@@ -43,7 +43,8 @@ The seed task creates:
 - one application: `demo-app`
 - one agent: `assistant`
 - one active policy set for `development`
-- one API key printed at seed time
+- one runtime API key printed at seed time
+- one admin API key printed at seed time
 
 ## Example request
 
@@ -75,6 +76,7 @@ Create a draft policy version:
 ```bash
 curl -X POST http://localhost:3000/v1/admin/policy_versions \
   -H "Content-Type: application/json" \
+  -H "X-Api-Key: YOUR_ADMIN_KEY" \
   -d '{
     "policy_version": {
       "policy_set_id": 1,
@@ -92,6 +94,7 @@ Test a policy version without calling a provider:
 ```bash
 curl -X POST http://localhost:3000/v1/admin/policy_versions/1/test \
   -H "Content-Type: application/json" \
+  -H "X-Api-Key: YOUR_ADMIN_KEY" \
   -d '{
     "messages": [
       {
@@ -102,10 +105,29 @@ curl -X POST http://localhost:3000/v1/admin/policy_versions/1/test \
   }'
 ```
 
+Clone an active policy version into a new draft before editing rules:
+
+```bash
+curl -X POST http://localhost:3000/v1/admin/policy_versions/1/clone \
+  -H "Content-Type: application/json" \
+  -H "X-Api-Key: YOUR_ADMIN_KEY" \
+  -d '{
+    "policy_version": {
+      "version": "2026-03-20.1",
+      "definition": {
+        "description": "Cloned draft policy"
+      }
+    }
+  }'
+```
+
 ## Notes
 
 - The `stub` provider makes the project usable without external LLM credentials.
 - OpenAI support is scaffolded through the provider adapter interface and can be
   extended without changing the policy pipeline.
+- Admin APIs require an admin-scoped API key.
+- Active and archived policy versions are treated as immutable; mutate draft
+  versions or clone an existing version into a draft first.
 - This app is designed as a modular monolith so frontend or async features can
   be layered on later without reworking the core contracts.

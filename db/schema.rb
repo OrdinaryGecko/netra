@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_18_140800) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_20_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -26,6 +26,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_18_140800) do
   end
 
   create_table "api_keys", force: :cascade do |t|
+    t.string "access_level", default: "runtime", null: false
     t.boolean "active", default: true, null: false
     t.bigint "client_application_id", null: false
     t.datetime "created_at", null: false
@@ -33,6 +34,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_18_140800) do
     t.string "name", null: false
     t.string "token_digest", null: false
     t.datetime "updated_at", null: false
+    t.index ["access_level"], name: "index_api_keys_on_access_level"
     t.index ["client_application_id"], name: "index_api_keys_on_client_application_id"
     t.index ["token_digest"], name: "index_api_keys_on_token_digest", unique: true
   end

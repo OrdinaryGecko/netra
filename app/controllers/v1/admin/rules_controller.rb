@@ -1,6 +1,6 @@
 module V1
   module Admin
-    class RulesController < BaseController
+    class RulesController < Admin::BaseController
       def create
         policy_version = PolicyVersion.find(rule_params[:policy_version_id])
         rule = policy_version.rules.new(rule_params.except(:policy_version_id))
@@ -27,6 +27,8 @@ module V1
         rule.destroy!
 
         head :no_content
+      rescue ActiveRecord::RecordNotDestroyed => e
+        render_error("invalid_rule", status: :unprocessable_entity, details: e.record.errors.full_messages)
       end
 
       private
