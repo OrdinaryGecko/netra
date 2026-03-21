@@ -38,7 +38,13 @@
       }
 
       a { color: inherit; text-decoration: none; }
-      .shell { min-height: 100vh; display: grid; grid-template-columns: 320px 1fr; }
+      .shell {
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        transition: grid-template-columns 180ms ease;
+      }
+      .shell--collapsed { grid-template-columns: 92px 1fr; }
       .sidebar {
         padding: 28px 22px;
         background: rgba(34, 27, 20, 0.94);
@@ -47,6 +53,9 @@
         top: 0;
         height: 100vh;
         overflow-y: auto;
+      }
+      .shell--collapsed .sidebar {
+        padding-inline: 14px;
       }
       .brand {
         margin-bottom: 28px;
@@ -59,6 +68,25 @@
         letter-spacing: 0.02em;
       }
       .brand p, .sidebar small { color: rgba(246, 239, 228, 0.72); }
+      .shell--collapsed .brand p,
+      .shell--collapsed .sidebar strong,
+      .shell--collapsed .sidebar span,
+      .shell--collapsed .sidebar small,
+      .shell--collapsed .sidebar .sidebar-heading {
+        display: none;
+      }
+      .sidebar-toolbar {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+      .sidebar-heading {
+        font-size: 0.78rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(246, 239, 228, 0.62);
+      }
       .sidebar-section { margin-bottom: 24px; }
       .sidebar-link {
         display: block;
@@ -74,6 +102,15 @@
       }
       .sidebar-link strong { display: block; font-size: 1rem; }
       .sidebar-link span { display: block; font-size: 0.84rem; color: rgba(246, 239, 228, 0.66); }
+      .sidebar-toggle {
+        background: rgba(255,255,255,0.08);
+        color: #f6efe4;
+        padding: 10px 14px;
+      }
+      .shell--collapsed .sidebar-toggle {
+        width: 100%;
+        justify-content: center;
+      }
       .main { padding: 26px; }
       .hero {
         background: var(--paper);
@@ -124,6 +161,16 @@
       .badge--archived { background: rgba(31, 27, 22, 0.08); color: var(--muted); }
       form { display: grid; gap: 12px; }
       label { display: grid; gap: 6px; font-size: 0.95rem; }
+      .checkbox-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .checkbox-row input[type="checkbox"] {
+        width: auto;
+        margin: 0;
+        accent-color: var(--accent);
+      }
       input, textarea, select {
         width: 100%;
         border-radius: 14px;
@@ -231,9 +278,17 @@
       }
       @media (max-width: 980px) {
         .shell { grid-template-columns: 1fr; }
+        .shell--collapsed { grid-template-columns: 1fr; }
         .sidebar {
           height: auto;
           position: static;
+        }
+        .shell--collapsed .brand p,
+        .shell--collapsed .sidebar strong,
+        .shell--collapsed .sidebar span,
+        .shell--collapsed .sidebar small,
+        .shell--collapsed .sidebar .sidebar-heading {
+          display: initial;
         }
         .card--half, .card--third, .card--quarter { grid-column: span 12; }
       }

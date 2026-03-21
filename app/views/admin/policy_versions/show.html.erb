@@ -183,7 +183,7 @@
                   </label>
                 </div>
                 <div class="card--third">
-                  <label class="row">
+                  <label class="checkbox-row">
                     <%= form.check_box :enabled, disabled: @policy_version.status != "draft" %>
                     Enabled
                   </label>
@@ -242,7 +242,7 @@
           Priority
           <%= number_field_tag "rule[priority]", 100, disabled: @policy_version.status != "draft" %>
         </label>
-        <label class="row">
+        <label class="checkbox-row">
           <%= check_box_tag "rule[enabled]", true, true, disabled: @policy_version.status != "draft" %>
           Enabled
         </label>

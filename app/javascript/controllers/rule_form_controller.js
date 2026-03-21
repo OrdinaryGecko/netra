@@ -28,6 +28,7 @@ export default class extends Controller {
 
   kindChanged() {
     this.renderSummary()
+    this.applyTemplate()
   }
 
   applyTemplate() {

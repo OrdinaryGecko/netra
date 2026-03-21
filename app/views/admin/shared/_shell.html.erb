@@ -1,5 +1,10 @@
-<div class="shell">
+<div data-controller="sidebar">
+<div class="shell" data-sidebar-target="shell">
   <aside class="sidebar">
+    <div class="sidebar-toolbar">
+      <span class="sidebar-heading">Workbench</span>
+      <button type="button" class="button button-inline sidebar-toggle" data-sidebar-target="toggle" data-action="sidebar#toggle">Collapse</button>
+    </div>
     <div class="brand">
       <h1>Netra</h1>
       <p>Policy workbench for guarded LLM traffic.</p>
@@ -37,4 +42,5 @@
 
     <%= yield %>
   </main>
+</div>
 </div>
