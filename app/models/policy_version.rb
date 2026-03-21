@@ -13,7 +13,10 @@ class PolicyVersion < ApplicationRecord
   before_destroy :ensure_mutable!
 
   def publish!
-    raise ActiveRecord::RecordInvalid, self unless status == "draft"
+    unless status == "draft"
+      errors.add(:base, "only draft policy versions can be published; clone this version into a draft first")
+      raise ActiveRecord::RecordInvalid, self
+    end
 
     transaction do
       policy_set.policy_versions.where(status: "active").update_all(status: "archived")

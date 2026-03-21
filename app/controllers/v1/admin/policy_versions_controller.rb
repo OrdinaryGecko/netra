@@ -32,6 +32,8 @@ module V1
         policy_version.publish!
 
         render json: serialize_policy_version(policy_version), status: :ok
+      rescue ActiveRecord::RecordInvalid => e
+        render_error("invalid_policy_version", status: :unprocessable_entity, details: e.record.errors.full_messages)
       end
 
       def clone

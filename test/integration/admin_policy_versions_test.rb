@@ -106,4 +106,24 @@ class AdminPolicyVersionsTest < ActionDispatch::IntegrationTest
 
     assert_response :unprocessable_entity
   end
+
+  test "cannot publish an archived policy version directly" do
+    @policy_version.publish!
+
+    archived_clone = @policy_set.policy_versions.create!(
+      version: "2",
+      status: "draft",
+      definition: { "description" => "Replacement draft" }
+    )
+    archived_clone.publish!
+    @policy_version.reload
+
+    post "/v1/admin/policy_versions/#{@policy_version.id}/publish",
+      as: :json,
+      headers: { "X-Api-Key" => @admin_key }
+
+    assert_response :unprocessable_entity
+    body = JSON.parse(response.body)
+    assert_match(/only draft policy versions can be published/i, body["details"].join)
+  end
 end
