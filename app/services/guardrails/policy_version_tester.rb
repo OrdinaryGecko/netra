@@ -71,9 +71,49 @@ module Guardrails
         policy_version: @policy_version.version,
         provider_response:,
         messages: messages,
-        evaluations:,
+        evaluations: format_evaluations(evaluations),
         dry_run: true
       )
+    end
+
+    def format_evaluations(evaluations)
+      evaluations.map do |evaluation|
+        evaluation.merge(
+          triggered: evaluation[:outcome] == "matched",
+          detail: evaluation_detail(evaluation)
+        )
+      end
+    end
+
+    def evaluation_detail(evaluation)
+      details = evaluation[:details] || {}
+
+      case evaluation[:rule_kind]
+      when "max_message_chars"
+        length = details[:length] || details["length"] || 0
+        max = details[:max] || details["max"] || 4_000
+
+        evaluation[:outcome] == "matched" ? "Message is #{length} chars (max #{max})" : "Within limit (#{length}/#{max})"
+      when "keyword_blocklist"
+        keywords = Array(details[:keywords] || details["keywords"])
+
+        evaluation[:outcome] == "matched" ? "Blocked keywords found: #{keywords.join(', ')}" : "No blocked keywords found"
+      when "pii_detector"
+        types = Array(details[:types] || details["types"])
+
+        evaluation[:outcome] == "matched" ? "PII detected: #{types.join(', ')}" : "No PII detected"
+      when "json_format"
+        required = details[:required]
+        required = details["required"] if required.nil?
+        error = details[:error] || details["error"]
+
+        return "JSON format not required" if required == false
+        return "Invalid JSON format#{": #{error}" if error.present?}" if evaluation[:outcome] == "matched"
+
+        "Valid JSON"
+      else
+        evaluation[:outcome] == "matched" ? "Rule triggered" : "No match"
+      end
     end
 
     def provider

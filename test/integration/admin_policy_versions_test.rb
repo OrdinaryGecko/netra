@@ -68,6 +68,35 @@ class AdminPolicyVersionsTest < ActionDispatch::IntegrationTest
     assert_equal "blocked", body["status"]
     assert_equal ["prompt-injection-keywords"], body["reasons"]
     assert_equal 1, body["evaluations"].length
+    assert_equal true, body["evaluations"].first["triggered"]
+    assert_equal "Blocked keywords found: ignore previous instructions", body["evaluations"].first["detail"]
+  end
+
+  test "dry runs a clean max length rule with a passing detail message" do
+    @policy_version.rules.create!(
+      name: "input-length-limit",
+      kind: "max_message_chars",
+      stage: "input",
+      action: "block",
+      priority: 5,
+      config: { max: 50 }
+    )
+
+    post "/v1/admin/policy_versions/#{@policy_version.id}/test",
+      params: {
+        messages: [
+          { role: "user", content: "Hello world" }
+        ]
+      },
+      as: :json,
+      headers: { "X-Api-Key" => @admin_key }
+
+    assert_response :success
+    body = JSON.parse(response.body)
+    evaluation = body["evaluations"].find { |entry| entry["rule_name"] == "input-length-limit" }
+
+    assert_equal false, evaluation["triggered"]
+    assert_equal "Within limit (11/50)", evaluation["detail"]
   end
 
   test "clones an active policy version into a draft" do

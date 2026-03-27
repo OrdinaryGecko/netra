@@ -18,11 +18,15 @@ module Guardrails
         @content.length > max ? matched(length: @content.length, max:) : clean(length: @content.length, max:)
       when "keyword_blocklist"
         keywords = Array(@config["keywords"]).map(&:downcase)
-        hit = keywords.find { |keyword| @content.downcase.include?(keyword) }
-        hit ? matched(keyword: hit) : clean(keyword_count: keywords.size)
+        found = keywords.select { |keyword| @content.downcase.include?(keyword) }
+        found.any? ? matched(keywords: found) : clean(keyword_count: keywords.size)
       when "pii_detector"
-        masked = Masker.mask(@content)
-        masked == @content ? clean : matched
+        pii_types = []
+        pii_types << "email" if @content.match?(Masker::EMAIL_REGEX)
+        pii_types << "phone" if @content.match?(Masker::PHONE_REGEX)
+        pii_types << "ssn" if @content.match?(Masker::SSN_REGEX)
+
+        pii_types.any? ? matched(types: pii_types) : clean(types: [])
       when "json_format"
         required = @options.dig("expected_output", "format") == "json_object" || @options.dig(:expected_output, :format) == "json_object"
         return clean(required: false) unless required

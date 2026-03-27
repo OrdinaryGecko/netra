@@ -51,12 +51,13 @@ export interface DryRunEvaluation {
   rule_id?: number;
   rule_name?: string;
   ruleName?: string;
+  rule_kind?: RuleKind;
   action: RuleAction;
   triggered?: boolean;
   outcome?: string;
   stage?: RuleStage;
   detail?: string;
-  metadata?: Record<string, unknown>;
+  details?: Record<string, unknown>;
 }
 
 export interface DryRunResult {

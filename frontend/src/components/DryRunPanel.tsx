@@ -27,16 +27,29 @@ const actionResultColors: Record<string, string> = {
   log_only: 'text-muted-foreground',
 };
 
+const actionBadgeVariants: Record<string, "secondary" | "destructive" | "outline"> = {
+  allow: 'secondary',
+  block: 'destructive',
+  mask: 'secondary',
+  log_only: 'outline',
+};
+
 function evaluationName(evaluation: DryRunEvaluation) {
   return evaluation.ruleName || evaluation.rule_name || "Rule";
 }
 
 function evaluationDetail(evaluation: DryRunEvaluation) {
   if (evaluation.detail) return evaluation.detail;
-  if (evaluation.metadata) return JSON.stringify(evaluation.metadata);
+  if (evaluation.details) return JSON.stringify(evaluation.details);
   if (evaluation.outcome) return evaluation.outcome;
 
   return "No detail";
+}
+
+function evaluationTriggered(evaluation: DryRunEvaluation) {
+  if (typeof evaluation.triggered === 'boolean') return evaluation.triggered;
+
+  return evaluation.outcome === 'matched';
 }
 
 export function DryRunPanel({ policyVersionId }: DryRunPanelProps) {
@@ -53,7 +66,7 @@ export function DryRunPanel({ policyVersionId }: DryRunPanelProps) {
   };
 
   const evaluations = result?.evaluations || [];
-  const triggered = evaluations.filter((evaluation) => evaluation.triggered ?? evaluation.outcome !== 'passed');
+  const triggered = evaluations.filter(evaluationTriggered);
   const blocked = result?.status === 'blocked';
 
   return (
@@ -84,12 +97,15 @@ export function DryRunPanel({ policyVersionId }: DryRunPanelProps) {
           </div>
           <div className="space-y-1.5">
             {evaluations.map((evaluation, index) => {
-              const Icon = actionIcons[evaluation.action] || Info;
+              const isTriggered = evaluationTriggered(evaluation);
+              const Icon = isTriggered ? (actionIcons[evaluation.action] || Info) : CheckCircle2;
               return (
-                <div key={`${evaluationName(evaluation)}-${index}`} className={cn('flex items-center gap-3 rounded-md px-3 py-2 text-xs', (evaluation.triggered ?? evaluation.outcome !== 'passed') ? 'surface-elevated' : 'opacity-50')}>
-                  <Icon className={cn('h-3.5 w-3.5 shrink-0', (evaluation.triggered ?? evaluation.outcome !== 'passed') ? actionResultColors[evaluation.action] : 'text-muted-foreground')} />
+                <div key={`${evaluationName(evaluation)}-${index}`} className={cn('flex items-center gap-3 rounded-md border px-3 py-2 text-xs', isTriggered ? 'surface-elevated border-border' : 'border-status-active/30 bg-status-active/5')}>
+                  <Icon className={cn('h-3.5 w-3.5 shrink-0', isTriggered ? actionResultColors[evaluation.action] : 'text-status-active')} />
                   <span className="font-medium text-foreground min-w-[140px]">{evaluationName(evaluation)}</span>
-                  <Badge variant="outline" className="text-[10px] font-mono rounded-sm px-1.5">{evaluation.action}</Badge>
+                  <Badge variant={isTriggered ? actionBadgeVariants[evaluation.action] : 'secondary'} className="text-[10px] font-mono rounded-sm px-1.5">
+                    {isTriggered ? evaluation.action : 'pass'}
+                  </Badge>
                   <span className="text-muted-foreground font-mono ml-auto">{evaluationDetail(evaluation)}</span>
                 </div>
               );
