@@ -29,9 +29,18 @@ module ApiKeyAuthenticatable
 
   def authenticate_from_header
     token = request.headers["X-Api-Key"].to_s
+    token = bearer_token if token.blank?
     return nil if token.blank?
 
     ApiKey.authenticate(token)
+  end
+
+  def bearer_token
+    authorization = request.headers["Authorization"].to_s
+    scheme, token = authorization.split(" ", 2)
+    return nil unless scheme&.casecmp("Bearer")&.zero?
+
+    token.to_s
   end
 
   def authenticate_from_session(access_levels)

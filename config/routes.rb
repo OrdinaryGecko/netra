@@ -23,6 +23,7 @@ Rails.application.routes.draw do
 
   namespace :v1 do
     post :guarded_completions, to: "guarded_completions#create"
+    post "chat/completions", to: "chat_completions#create"
 
     namespace :admin do
       resource :session, only: %i[show create destroy]
