@@ -2,7 +2,7 @@ module V1
   module Admin
     class RulesController < Admin::BaseController
       def create
-        policy_version = PolicyVersion.find(rule_params[:policy_version_id])
+        policy_version = policy_versions_scope.find(rule_params[:policy_version_id])
         rule = policy_version.rules.new(rule_params.except(:policy_version_id))
 
         if rule.save
@@ -13,7 +13,7 @@ module V1
       end
 
       def update
-        rule = Rule.find(params[:id])
+        rule = rules_scope.find(params[:id])
 
         if rule.update(rule_params.except(:policy_version_id))
           render json: rule.as_json, status: :ok
@@ -23,7 +23,7 @@ module V1
       end
 
       def destroy
-        rule = Rule.find(params[:id])
+        rule = rules_scope.find(params[:id])
         rule.destroy!
 
         head :no_content
@@ -35,6 +35,14 @@ module V1
 
       def rule_params
         params.require(:rule).permit(:policy_version_id, :name, :kind, :stage, :action, :priority, :enabled, config: {})
+      end
+
+      def rules_scope
+        Rule.joins(policy_version: :policy_set).where(policy_versions: { policy_set_id: current_client_application.policy_set_ids })
+      end
+
+      def policy_versions_scope
+        PolicyVersion.where(policy_set_id: current_client_application.policy_set_ids)
       end
     end
   end

@@ -1,12 +1,12 @@
 class FrontendController < ApplicationController
   def index
-    built_index = Rails.root.join("public/app/index.html")
+    @use_vite_dev_server = use_vite_dev_server?
 
-    if use_vite_dev_server?
+    if @use_vite_dev_server
       render :index, layout: false
-    elsif built_index.exist?
-      render file: built_index, layout: false, content_type: "text/html"
     else
+      @frontend_stylesheet = built_asset("css")
+      @frontend_javascript = built_asset("js")
       render :index, layout: false
     end
   end
@@ -15,5 +15,10 @@ class FrontendController < ApplicationController
 
   def use_vite_dev_server?
     Rails.env.development? && ENV["FRONTEND_DEV_SERVER"] == "1"
+  end
+
+  def built_asset(extension)
+    Dir.glob(Rails.root.join("public/app/assets/*.#{extension}")).sort.last
+      &.sub(Rails.root.join("public").to_s, "")
   end
 end

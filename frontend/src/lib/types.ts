@@ -1,7 +1,7 @@
-export type VersionStatus = 'draft' | 'active' | 'archived';
-export type RuleKind = 'max_message_chars' | 'keyword_blocklist' | 'pii_detector' | 'json_format';
-export type RuleStage = 'input' | 'output';
-export type RuleAction = 'allow' | 'block' | 'mask' | 'log_only';
+export type VersionStatus = "draft" | "active" | "archived";
+export type RuleKind = "max_message_chars" | "keyword_blocklist" | "pii_detector" | "json_format";
+export type RuleStage = "input" | "output";
+export type RuleAction = "allow" | "block" | "mask" | "log_only";
 
 export interface Rule {
   id: string;
@@ -18,7 +18,7 @@ export interface PolicyVersion {
   id: string;
   policySetId: string;
   policySetName: string;
-  version: number;
+  version: string;
   status: VersionStatus;
   createdAt: string;
   updatedAt: string;
@@ -26,10 +26,41 @@ export interface PolicyVersion {
   rules: Rule[];
 }
 
-export interface DryRunResult {
-  ruleId: string;
-  ruleName: string;
+export interface PolicySetSummary {
+  id: string;
+  name: string;
+  environment: string;
+  active: boolean;
+  policyVersions: Array<{
+    id: string;
+    version: string;
+    status: VersionStatus;
+    publishedAt?: string | null;
+  }>;
+}
+
+export interface DryRunEvaluation {
+  rule_id?: number;
+  rule_name?: string;
+  ruleName?: string;
   action: RuleAction;
-  triggered: boolean;
-  detail: string;
+  triggered?: boolean;
+  outcome?: string;
+  stage?: RuleStage;
+  detail?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface DryRunResult {
+  status: "allowed" | "blocked";
+  action: RuleAction;
+  reasons: string[];
+  traceId: string;
+  providerResponse: Record<string, unknown> | null;
+  evaluations: DryRunEvaluation[];
+}
+
+export interface ApiErrorPayload {
+  error: string;
+  details?: string[];
 }

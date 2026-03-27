@@ -5,11 +5,18 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
+    <% if @frontend_stylesheet.present? %>
+      <link rel="stylesheet" href="<%= @frontend_stylesheet %>">
+    <% end %>
   </head>
   <body>
     <div id="root"></div>
-    <% vite_origin = ENV.fetch("VITE_DEV_SERVER_URL", "http://localhost:8080") %>
-    <script type="module" src="<%= "#{vite_origin}/@vite/client" %>"></script>
-    <script type="module" src="<%= "#{vite_origin}/src/main.tsx" %>"></script>
+    <% if @use_vite_dev_server %>
+      <% vite_origin = ENV.fetch("VITE_DEV_SERVER_URL", "http://localhost:8080") %>
+      <script type="module" src="<%= "#{vite_origin}/@vite/client" %>"></script>
+      <script type="module" src="<%= "#{vite_origin}/src/main.tsx" %>"></script>
+    <% elsif @frontend_javascript.present? %>
+      <script type="module" src="<%= @frontend_javascript %>"></script>
+    <% end %>
   </body>
 </html>
