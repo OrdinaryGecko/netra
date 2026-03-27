@@ -12,6 +12,7 @@ interface RuleEditorDialogProps {
   onClose: () => void;
   onSave: (rule: Rule) => void;
   rule: Rule | null;
+  readOnly?: boolean;
 }
 
 const defaultRule: Omit<Rule, 'id'> = {
@@ -24,7 +25,7 @@ const defaultRule: Omit<Rule, 'id'> = {
   config: {},
 };
 
-export function RuleEditorDialog({ open, onClose, onSave, rule }: RuleEditorDialogProps) {
+export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false }: RuleEditorDialogProps) {
   const [form, setForm] = useState<Omit<Rule, 'id'> & { id?: string }>(defaultRule);
   const [configStr, setConfigStr] = useState('{}');
 
@@ -62,18 +63,20 @@ export function RuleEditorDialog({ open, onClose, onSave, rule }: RuleEditorDial
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-lg bg-card border-border">
         <DialogHeader>
-          <DialogTitle className="font-mono">{rule ? 'Edit Rule' : 'New Rule'}</DialogTitle>
-          <DialogDescription className="text-muted-foreground">Configure the rule parameters below.</DialogDescription>
+          <DialogTitle className="font-mono">{readOnly ? 'View Rule' : rule ? 'Edit Rule' : 'New Rule'}</DialogTitle>
+          <DialogDescription className="text-muted-foreground">
+            {readOnly ? 'Rule details are read-only for active and archived policy versions.' : 'Configure the rule parameters below.'}
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
             <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Name</Label>
-            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Rule name" />
+            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Rule name" disabled={readOnly} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Kind</Label>
-              <Select value={form.kind} onValueChange={(v) => setForm({ ...form, kind: v as RuleKind })}>
+              <Select value={form.kind} onValueChange={(v) => setForm({ ...form, kind: v as RuleKind })} disabled={readOnly}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="max_message_chars">Max Chars</SelectItem>
@@ -85,7 +88,7 @@ export function RuleEditorDialog({ open, onClose, onSave, rule }: RuleEditorDial
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Stage</Label>
-              <Select value={form.stage} onValueChange={(v) => setForm({ ...form, stage: v as RuleStage })}>
+              <Select value={form.stage} onValueChange={(v) => setForm({ ...form, stage: v as RuleStage })} disabled={readOnly}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="input">Input</SelectItem>
@@ -97,7 +100,7 @@ export function RuleEditorDialog({ open, onClose, onSave, rule }: RuleEditorDial
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Action</Label>
-              <Select value={form.action} onValueChange={(v) => setForm({ ...form, action: v as RuleAction })}>
+              <Select value={form.action} onValueChange={(v) => setForm({ ...form, action: v as RuleAction })} disabled={readOnly}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="allow">Allow</SelectItem>
@@ -109,17 +112,17 @@ export function RuleEditorDialog({ open, onClose, onSave, rule }: RuleEditorDial
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Priority</Label>
-              <Input type="number" min={1} value={form.priority} onChange={(e) => setForm({ ...form, priority: parseInt(e.target.value) || 1 })} />
+              <Input type="number" min={1} value={form.priority} onChange={(e) => setForm({ ...form, priority: parseInt(e.target.value) || 1 })} disabled={readOnly} />
             </div>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Config (JSON)</Label>
-            <Textarea className="font-mono text-xs min-h-[100px]" value={configStr} onChange={(e) => setConfigStr(e.target.value)} />
+            <Textarea className="font-mono text-xs min-h-[100px]" value={configStr} onChange={(e) => setConfigStr(e.target.value)} disabled={readOnly} />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSave}>Save Rule</Button>
+          <Button variant="outline" onClick={onClose}>{readOnly ? 'Close' : 'Cancel'}</Button>
+          {!readOnly && <Button onClick={handleSave}>Save Rule</Button>}
         </DialogFooter>
       </DialogContent>
     </Dialog>

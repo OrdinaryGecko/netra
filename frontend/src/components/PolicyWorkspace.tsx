@@ -178,6 +178,7 @@ export function PolicyWorkspace() {
         onClose={() => setEditorOpen(false)}
         onSave={handleSaveRule}
         rule={editingRule}
+        readOnly={!isDraft}
       />
     </div>
   );
