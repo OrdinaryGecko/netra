@@ -1,0 +1,159 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 20% 97%;
+    --foreground: 220 20% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 15%;
+
+    --primary: 174 55% 38%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 14% 93%;
+    --secondary-foreground: 220 20% 25%;
+
+    --muted: 220 14% 94%;
+    --muted-foreground: 220 10% 46%;
+
+    --accent: 174 55% 38%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 68% 52%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 14% 88%;
+    --input: 220 14% 88%;
+    --ring: 174 55% 38%;
+
+    --radius: 0.5rem;
+
+    --status-draft: 40 80% 48%;
+    --status-active: 150 60% 40%;
+    --status-archived: 220 10% 58%;
+
+    --surface-elevated: 220 14% 96%;
+
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-sans: 'Inter', system-ui, sans-serif;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 20% 30%;
+    --sidebar-primary: 174 55% 38%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 94%;
+    --sidebar-accent-foreground: 220 20% 25%;
+    --sidebar-border: 220 14% 88%;
+    --sidebar-ring: 174 55% 38%;
+  }
+
+  .dark {
+    --background: 220 20% 7%;
+    --foreground: 210 20% 90%;
+
+    --card: 220 18% 10%;
+    --card-foreground: 210 20% 90%;
+
+    --popover: 220 18% 12%;
+    --popover-foreground: 210 20% 90%;
+
+    --primary: 174 72% 46%;
+    --primary-foreground: 220 20% 7%;
+
+    --secondary: 220 16% 16%;
+    --secondary-foreground: 210 20% 80%;
+
+    --muted: 220 14% 14%;
+    --muted-foreground: 215 12% 50%;
+
+    --accent: 174 72% 46%;
+    --accent-foreground: 220 20% 7%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 220 14% 18%;
+    --input: 220 14% 18%;
+    --ring: 174 72% 46%;
+
+    --status-draft: 45 93% 58%;
+    --status-active: 142 72% 50%;
+    --status-archived: 215 12% 50%;
+
+    --surface-elevated: 220 16% 13%;
+
+    --sidebar-background: 220 18% 10%;
+    --sidebar-foreground: 210 20% 80%;
+    --sidebar-primary: 174 72% 46%;
+    --sidebar-primary-foreground: 220 20% 7%;
+    --sidebar-accent: 220 14% 14%;
+    --sidebar-accent-foreground: 210 20% 80%;
+    --sidebar-border: 220 14% 18%;
+    --sidebar-ring: 174 72% 46%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+  }
+
+  code, .font-mono {
+    font-family: var(--font-mono);
+  }
+}
+
+@layer utilities {
+  .text-status-draft {
+    color: hsl(var(--status-draft));
+  }
+  .text-status-active {
+    color: hsl(var(--status-active));
+  }
+  .text-status-archived {
+    color: hsl(var(--status-archived));
+  }
+  .bg-status-draft {
+    background-color: hsl(var(--status-draft));
+  }
+  .bg-status-active {
+    background-color: hsl(var(--status-active));
+  }
+  .bg-status-archived {
+    background-color: hsl(var(--status-archived));
+  }
+  .border-status-draft {
+    border-color: hsl(var(--status-draft));
+  }
+  .border-status-active {
+    border-color: hsl(var(--status-active));
+  }
+  .border-status-archived {
+    border-color: hsl(var(--status-archived));
+  }
+  .bg-status-draft\/10 {
+    background-color: hsl(var(--status-draft) / 0.1);
+  }
+  .bg-status-active\/10 {
+    background-color: hsl(var(--status-active) / 0.1);
+  }
+  .bg-status-archived\/10 {
+    background-color: hsl(var(--status-archived) / 0.1);
+  }
+  .surface-elevated {
+    background-color: hsl(var(--surface-elevated));
+  }
+}

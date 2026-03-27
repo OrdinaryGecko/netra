@@ -1,5 +1,8 @@
 Rails.application.routes.draw do
-  root "admin/policy_sets#index"
+  root to: redirect("/app")
+
+  get "/app", to: "frontend#index"
+  get "/app/*path", to: "frontend#index"
 
   namespace :admin do
     resource :session, only: %i[new create destroy]
