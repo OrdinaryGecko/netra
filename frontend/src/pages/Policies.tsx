@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Input } from '@/components/ui/input';
-import { Shield, Plus, LogOut, Search, FileText, ChevronRight } from 'lucide-react';
+import { Shield, Plus, LogOut, Search, FileText, ChevronRight, GitBranch } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -58,19 +58,8 @@ export default function Policies() {
     );
   }, [policySetsQuery.data, search]);
 
-  const latestVersion = (policy: (typeof filtered)[number]) =>
-    [...policy.policyVersions].sort((a, b) => b.version.localeCompare(a.version, undefined, { numeric: true }))[0];
-
-  const activeVersion = (policy: (typeof filtered)[number]) =>
-    policy.policyVersions.find((version) => version.status === 'active');
-
-  const openPolicy = (policy: (typeof filtered)[number]) => {
-    const preferred =
-      policy.policyVersions.find((version) => version.status === 'draft') ||
-      policy.policyVersions.find((version) => version.status === 'active') ||
-      policy.policyVersions[0];
-
-    if (preferred) navigate(`/policy/${preferred.id}`);
+  const openPolicyVersion = (versionId: string) => {
+    navigate(`/policy/${versionId}`);
   };
 
   const handleSignOut = async () => {
@@ -135,15 +124,8 @@ export default function Policies() {
 
         <div className="grid gap-4">
           {filtered.map((policy) => {
-            const latest = latestVersion(policy);
-            const active = activeVersion(policy);
-
             return (
-              <Card
-                key={policy.id}
-                className="hover:border-primary/40 transition-colors cursor-pointer group"
-                onClick={() => openPolicy(policy)}
-              >
+              <Card key={policy.id} className="overflow-hidden">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
@@ -155,30 +137,39 @@ export default function Policies() {
                         <CardDescription className="text-xs mt-0.5">{policy.description}</CardDescription>
                       </div>
                     </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
+                    <div className="text-right text-xs text-muted-foreground font-mono">
+                      <div>{policy.policyVersions.length} version{policy.policyVersions.length !== 1 ? 's' : ''}</div>
+                      <div>{policy.environment}</div>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0">
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground font-mono flex-wrap">
-                    <span>{policy.policyVersions.length} version{policy.policyVersions.length !== 1 ? 's' : ''}</span>
-                    <span>·</span>
-                    <span>{policy.environment}</span>
-                    {active && (
-                      <>
-                        <span>·</span>
-                        <span className="flex items-center gap-1.5">
-                          Active: <StatusBadge status="active" /> {active.version}
-                        </span>
-                      </>
-                    )}
-                    {latest && (
-                      <>
-                        <span>·</span>
-                        <span className="flex items-center gap-1.5">
-                          Latest: <StatusBadge status={latest.status} /> {latest.version}
-                        </span>
-                      </>
-                    )}
+                  <div className="space-y-2">
+                    {policy.policyVersions.map((version) => (
+                      <button
+                        key={version.id}
+                        type="button"
+                        onClick={() => openPolicyVersion(version.id)}
+                        className="w-full rounded-lg border border-border bg-background/70 px-4 py-3 text-left transition-colors hover:border-primary/40 hover:bg-muted/40"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <GitBranch className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="font-mono text-sm font-medium">{version.version}</span>
+                              <StatusBadge status={version.status} />
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {version.description || 'No description'}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono shrink-0">
+                            <span>{version.rulesCount || 0} rules</span>
+                            <ChevronRight className="h-4 w-4" />
+                          </div>
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 </CardContent>
               </Card>

@@ -17,7 +17,9 @@ type BackendPolicySet = {
     status: "draft" | "active" | "archived";
     published_at?: string | null;
     updated_at?: string;
+    created_at?: string;
     definition?: Record<string, unknown>;
+    rules_count?: number;
   }>;
 };
 
@@ -143,7 +145,9 @@ export async function fetchPolicySets(): Promise<PolicySetSummary[]> {
       status: version.status,
       publishedAt: version.published_at,
       updatedAt: version.updated_at || null,
+      createdAt: version.created_at || null,
       description: String(version.definition?.description || ""),
+      rulesCount: version.rules_count || 0,
     })),
   }));
 }

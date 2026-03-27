@@ -20,7 +20,9 @@ export interface PolicyVersionSummary {
   status: VersionStatus;
   publishedAt?: string | null;
   updatedAt?: string | null;
+  createdAt?: string | null;
   description?: string;
+  rulesCount?: number;
 }
 
 export interface PolicyVersion {
