@@ -119,6 +119,10 @@ export function PolicyWorkspace() {
     deleteRuleMutation.mutate(id);
   };
 
+  const handleBack = () => {
+    navigate('/policies');
+  };
+
   if (versionQuery.isLoading) {
     return <div className="min-h-screen bg-background px-6 py-10 text-sm text-muted-foreground">Loading policy workspace...</div>;
   }
@@ -149,7 +153,7 @@ export function PolicyWorkspace() {
 
   return (
     <div className="min-h-screen bg-background">
-      <VersionHeader version={version} onPublish={handlePublish} onClone={handleClone} />
+      <VersionHeader version={version} onPublish={handlePublish} onClone={handleClone} onBack={handleBack} />
       <div className="max-w-5xl mx-auto px-6 py-6">
         <Tabs defaultValue="rules" className="space-y-6">
           <TabsList className="bg-muted">
