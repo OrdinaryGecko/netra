@@ -1,5 +1,11 @@
 import { ApiErrorPayload, DryRunResult, PolicySetSummary, PolicyVersion, Rule } from "./types";
 
+type SessionPayload = {
+  authenticated: boolean;
+  api_key: { id: number; name: string };
+  client_application: { id: number; name: string; key: string };
+};
+
 type BackendPolicySet = {
   id: number;
   name: string;
@@ -10,6 +16,8 @@ type BackendPolicySet = {
     version: string;
     status: "draft" | "active" | "archived";
     published_at?: string | null;
+    updated_at?: string;
+    definition?: Record<string, unknown>;
   }>;
 };
 
@@ -27,6 +35,8 @@ type BackendRule = {
 type BackendPolicyVersion = {
   id: number;
   policy_set_id: number;
+  policy_set_name: string;
+  policy_set_environment: string;
   version: string;
   status: PolicyVersion["status"];
   created_at: string;
@@ -49,9 +59,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     Accept: "application/json",
   };
 
-  if (options.body !== undefined) {
-    headers["Content-Type"] = "application/json";
-  }
+  if (options.body !== undefined) headers["Content-Type"] = "application/json";
 
   const token = csrfToken();
   if (token) headers["X-CSRF-Token"] = token;
@@ -69,10 +77,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     throw new Error(message);
   }
 
-  if (response.status === 204) {
-    return null as T;
-  }
-
+  if (response.status === 204) return null as T;
   return response.json() as Promise<T>;
 }
 
@@ -89,11 +94,12 @@ function mapRule(rule: BackendRule): Rule {
   };
 }
 
-function mapPolicyVersion(policyVersion: BackendPolicyVersion, policySetName: string): PolicyVersion {
+function mapPolicyVersion(policyVersion: BackendPolicyVersion): PolicyVersion {
   return {
     id: String(policyVersion.id),
     policySetId: String(policyVersion.policy_set_id),
-    policySetName,
+    policySetName: policyVersion.policy_set_name,
+    policySetEnvironment: policyVersion.policy_set_environment,
     version: policyVersion.version,
     status: policyVersion.status,
     createdAt: policyVersion.created_at,
@@ -103,6 +109,23 @@ function mapPolicyVersion(policyVersion: BackendPolicyVersion, policySetName: st
   };
 }
 
+export async function getSession() {
+  return request<SessionPayload>("/v1/admin/session");
+}
+
+export async function createSession(apiKey: string) {
+  return request<SessionPayload>("/v1/admin/session", {
+    method: "POST",
+    body: { api_key: apiKey },
+  });
+}
+
+export async function destroySession() {
+  return request<void>("/v1/admin/session", {
+    method: "DELETE",
+  });
+}
+
 export async function fetchPolicySets(): Promise<PolicySetSummary[]> {
   const payload = await request<BackendPolicySet[]>("/v1/admin/policy_sets");
   return payload.map((policySet) => ({
@@ -110,25 +133,31 @@ export async function fetchPolicySets(): Promise<PolicySetSummary[]> {
     name: policySet.name,
     environment: policySet.environment,
     active: policySet.active,
+    description: String(
+      policySet.policy_versions?.[0]?.definition?.description ||
+      `Policies for ${policySet.environment}`
+    ),
     policyVersions: (policySet.policy_versions || []).map((version) => ({
       id: String(version.id),
       version: version.version,
       status: version.status,
       publishedAt: version.published_at,
+      updatedAt: version.updated_at || null,
+      description: String(version.definition?.description || ""),
     })),
   }));
 }
 
-export async function fetchPolicyVersion(policyVersionId: string, policySetName: string): Promise<PolicyVersion> {
+export async function fetchPolicyVersion(policyVersionId: string): Promise<PolicyVersion> {
   const payload = await request<BackendPolicyVersion>(`/v1/admin/policy_versions/${policyVersionId}`);
-  return mapPolicyVersion(payload, policySetName);
+  return mapPolicyVersion(payload);
 }
 
-export async function publishPolicyVersion(policyVersionId: string, policySetName: string): Promise<PolicyVersion> {
+export async function publishPolicyVersion(policyVersionId: string): Promise<PolicyVersion> {
   const payload = await request<BackendPolicyVersion>(`/v1/admin/policy_versions/${policyVersionId}/publish`, {
     method: "POST",
   });
-  return mapPolicyVersion(payload, policySetName);
+  return mapPolicyVersion(payload);
 }
 
 export async function clonePolicyVersion(policyVersion: PolicyVersion): Promise<PolicyVersion> {
@@ -143,7 +172,39 @@ export async function clonePolicyVersion(policyVersion: PolicyVersion): Promise<
       },
     },
   });
-  return mapPolicyVersion(payload, policyVersion.policySetName);
+  return mapPolicyVersion(payload);
+}
+
+export async function createPolicySet(params: { name: string; environment: string; description: string }) {
+  const policySet = await request<{ id: number; name: string; environment: string; active: boolean }>("/v1/admin/policy_sets", {
+    method: "POST",
+    body: {
+      policy_set: {
+        name: params.name,
+        environment: params.environment,
+        active: true,
+      },
+    },
+  });
+
+  const policyVersion = await request<BackendPolicyVersion>("/v1/admin/policy_versions", {
+    method: "POST",
+    body: {
+      policy_version: {
+        policy_set_id: policySet.id,
+        version: "1",
+        status: "draft",
+        definition: {
+          description: params.description,
+        },
+      },
+    },
+  });
+
+  return {
+    policySetId: String(policySet.id),
+    policyVersion: mapPolicyVersion(policyVersion),
+  };
 }
 
 export async function createRule(policyVersionId: string, rule: Omit<Rule, "id">): Promise<Rule> {
@@ -194,7 +255,7 @@ export async function dryRunPolicyVersion(policyVersionId: string, content: stri
     reasons: string[];
     trace_id: string;
     provider_response: Record<string, unknown> | null;
-    evaluations: DryRunEvaluation[];
+    evaluations: DryRunResult["evaluations"];
   }>(`/v1/admin/policy_versions/${policyVersionId}/test`, {
     method: "POST",
     body: {

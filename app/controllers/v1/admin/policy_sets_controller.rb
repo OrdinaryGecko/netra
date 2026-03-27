@@ -3,7 +3,13 @@ module V1
     class PolicySetsController < Admin::BaseController
       def index
         policy_sets = current_client_application.policy_sets.includes(:policy_versions).order(:name)
-        render json: policy_sets.as_json(include: { policy_versions: { only: %i[id version status published_at] } })
+        render json: policy_sets.as_json(
+          include: {
+            policy_versions: {
+              only: %i[id version status published_at updated_at definition]
+            }
+          }
+        )
       end
 
       def show

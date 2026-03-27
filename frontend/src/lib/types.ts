@@ -14,10 +14,20 @@ export interface Rule {
   config: Record<string, unknown>;
 }
 
+export interface PolicyVersionSummary {
+  id: string;
+  version: string;
+  status: VersionStatus;
+  publishedAt?: string | null;
+  updatedAt?: string | null;
+  description?: string;
+}
+
 export interface PolicyVersion {
   id: string;
   policySetId: string;
   policySetName: string;
+  policySetEnvironment: string;
   version: string;
   status: VersionStatus;
   createdAt: string;
@@ -31,12 +41,8 @@ export interface PolicySetSummary {
   name: string;
   environment: string;
   active: boolean;
-  policyVersions: Array<{
-    id: string;
-    version: string;
-    status: VersionStatus;
-    publishedAt?: string | null;
-  }>;
+  description: string;
+  policyVersions: PolicyVersionSummary[];
 }
 
 export interface DryRunEvaluation {

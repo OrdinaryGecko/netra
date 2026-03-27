@@ -65,7 +65,10 @@ module V1
       private
 
       def serialize_policy_version(policy_version)
-        policy_version.as_json(include: { rules: {} })
+        policy_version.as_json(include: { rules: {} }).merge(
+          policy_set_name: policy_version.policy_set.name,
+          policy_set_environment: policy_version.policy_set.environment
+        )
       end
 
       def policy_version_params
