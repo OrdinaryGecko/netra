@@ -216,7 +216,7 @@
         <%= hidden_field_tag "rule[policy_version_id]", @policy_version.id %>
         <label>
           Name
-          <%= form.text_field :name, name: "rule[name]", placeholder: "block-sensitive-topics", disabled: @policy_version.status != "draft" %>
+          <%= form.text_field :name, name: "rule[name]", placeholder: "limit-input-length", disabled: @policy_version.status != "draft", data: { rule_form_target: "name" } %>
         </label>
         <div class="grid">
           <div class="card--third">

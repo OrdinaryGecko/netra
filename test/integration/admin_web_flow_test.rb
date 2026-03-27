@@ -32,6 +32,7 @@ class AdminWebFlowTest < ActionDispatch::IntegrationTest
     assert_match "Add rule", response.body
     assert_match "Version comparison", response.body
     assert_match "Use template", response.body
+    assert_match 'placeholder="limit-input-length"', response.body
   end
 
   test "updates a rule through the web workflow" do
