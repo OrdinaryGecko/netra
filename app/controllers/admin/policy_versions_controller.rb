@@ -66,9 +66,9 @@ module Admin
         request_payload: payload.deep_symbolize_keys
       )
 
-      render partial: "dry_run_result", locals: { result: @result }
+      render partial: "dry_run_frame", locals: { result: @result }
     rescue Guardrails::ValidationError => e
-      render partial: "dry_run_result", locals: { result: nil, errors: e.errors }, status: :unprocessable_entity
+      render partial: "dry_run_frame", locals: { result: nil, errors: e.errors }, status: :unprocessable_entity
     end
 
     private

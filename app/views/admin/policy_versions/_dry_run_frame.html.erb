@@ -1,0 +1,3 @@
+<%= turbo_frame_tag "dry_run_result" do %>
+  <%= render partial: "dry_run_result", locals: { result:, errors: local_assigns[:errors] } %>
+<% end %>
