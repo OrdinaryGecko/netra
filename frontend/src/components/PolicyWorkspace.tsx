@@ -34,6 +34,8 @@ export function PolicyWorkspace() {
   const version = versionQuery.data;
   const isDraft = version?.status === 'draft';
 
+  const persistedRule = (rule: Rule) => version?.rules.some((existingRule) => existingRule.id === rule.id) ?? false;
+
   const refreshWorkspace = async () => {
     await queryClient.invalidateQueries({ queryKey: ['policy-sets'] });
     await queryClient.invalidateQueries({ queryKey: ['policy-version'] });
@@ -61,16 +63,16 @@ export function PolicyWorkspace() {
 
   const saveRuleMutation = useMutation({
     mutationFn: async (rule: Rule) => {
-      if (editingRule) return updateRule(rule);
+      if (persistedRule(rule)) return updateRule(rule);
 
       const { id: _id, ...ruleWithoutId } = rule;
       return createRule(versionId!, ruleWithoutId);
     },
-    onSuccess: async () => {
+    onSuccess: async (_savedRule, rule) => {
       await refreshWorkspace();
       setEditorOpen(false);
       setEditingRule(null);
-      toast.success(editingRule ? 'Rule updated' : 'Rule created');
+      toast.success(persistedRule(rule) ? 'Rule updated' : 'Rule created');
     },
     onError: (error: Error) => toast.error(error.message),
   });
