@@ -3,26 +3,26 @@ import { StatusBadge } from './StatusBadge';
 import { ThemeToggle } from './ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Copy, Rocket, Shield } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface VersionHeaderProps {
   version: PolicyVersion;
   onPublish: () => void;
   onClone: () => void;
-  onBack: () => void;
 }
 
-export function VersionHeader({ version, onPublish, onClone, onBack }: VersionHeaderProps) {
+export function VersionHeader({ version, onPublish, onClone }: VersionHeaderProps) {
   const isDraft = version.status === 'draft';
+  const navigate = useNavigate();
 
   return (
     <div className="border-b border-border bg-card px-6 py-5">
       <div className="flex items-start justify-between">
         <div className="space-y-2">
-          <Button variant="ghost" size="sm" onClick={onBack} className="font-mono text-xs gap-1.5 -ml-2">
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Back to Policies
-          </Button>
           <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate('/policies')}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
             <Shield className="h-5 w-5 text-primary" />
             <h1 className="text-lg font-semibold font-mono tracking-tight text-foreground">
               {version.policySetName}
