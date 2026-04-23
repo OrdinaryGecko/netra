@@ -84,10 +84,15 @@ export default function Policies() {
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => navigate('/policies')}
+            className="flex items-center gap-2 rounded-md outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            aria-label="Go to homepage"
+          >
             <Shield className="h-5 w-5 text-primary" />
             <span className="font-mono font-bold text-lg">Netra</span>
-          </div>
+          </button>
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <Button variant="ghost" size="sm" onClick={handleSignOut} className="font-mono text-xs gap-1.5">
