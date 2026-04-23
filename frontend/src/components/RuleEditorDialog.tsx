@@ -22,7 +22,44 @@ const defaultRule: Omit<Rule, 'id'> = {
   action: 'block',
   priority: 1,
   enabled: true,
-  config: {},
+  config: { max: 4000 },
+};
+
+const ruleTemplates: Record<RuleKind, {
+  name: string;
+  stage: RuleStage;
+  action: RuleAction;
+  config: Record<string, unknown>;
+}> = {
+  max_message_chars: {
+    name: 'limit-input-length',
+    stage: 'input',
+    action: 'block',
+    config: { max: 4000 },
+  },
+  keyword_blocklist: {
+    name: 'block-prompt-injection-keywords',
+    stage: 'input',
+    action: 'block',
+    config: {
+      keywords: [
+        'ignore previous instructions',
+        'reveal system prompt',
+      ],
+    },
+  },
+  pii_detector: {
+    name: 'mask-pii-in-output',
+    stage: 'output',
+    action: 'mask',
+    config: {},
+  },
+  json_format: {
+    name: 'require-json-output',
+    stage: 'output',
+    action: 'block',
+    config: {},
+  },
 };
 
 export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false }: RuleEditorDialogProps) {
@@ -35,9 +72,23 @@ export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false
       setConfigStr(JSON.stringify(rule.config, null, 2));
     } else {
       setForm(defaultRule);
-      setConfigStr('{}');
+      setConfigStr(JSON.stringify(defaultRule.config, null, 2));
     }
   }, [rule, open]);
+
+  const handleKindChange = (kind: RuleKind) => {
+    const template = ruleTemplates[kind];
+
+    setForm((currentForm) => ({
+      ...currentForm,
+      kind,
+      name: currentForm.name || template.name,
+      stage: template.stage,
+      action: template.action,
+      config: template.config,
+    }));
+    setConfigStr(JSON.stringify(template.config, null, 2));
+  };
 
   const handleSave = () => {
     let parsedConfig: Record<string, unknown> = {};
@@ -76,7 +127,7 @@ export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Kind</Label>
-              <Select value={form.kind} onValueChange={(v) => setForm({ ...form, kind: v as RuleKind })} disabled={readOnly}>
+              <Select value={form.kind} onValueChange={(v) => handleKindChange(v as RuleKind)} disabled={readOnly}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="max_message_chars">Max Chars</SelectItem>
