@@ -8,22 +8,14 @@ class FrontendTest < ActionDispatch::IntegrationTest
     _, @admin_key = ApiKey.issue!(client_application: @client_application, name: "Frontend admin", access_level: "admin")
   end
 
-  test "root redirects to app" do
+  test "root responds as backend health endpoint" do
     get "/"
 
-    assert_redirected_to "/app"
-  end
-
-  test "app frontend route responds successfully" do
-    get "/app"
-
     assert_response :success
-    assert_match(/<div id="root"><\/div>|Netra/, response.body)
   end
 
-  test "session-authenticated frontend can call admin api" do
-    post "/admin/session", params: { api_key: @admin_key }
-    get "/v1/admin/policy_sets", as: :json
+  test "separate frontend can call admin api with admin api key" do
+    get "/v1/admin/policy_sets", as: :json, headers: { "X-Api-Key" => @admin_key }
 
     assert_response :success
     body = JSON.parse(response.body)

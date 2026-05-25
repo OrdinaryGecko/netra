@@ -1,12 +1,5 @@
 Rails.application.routes.draw do
-  root to: redirect("/app")
-
-  get "/app", to: "frontend#index"
-  get "/app/*path", to: "frontend#index"
-  get "/admin/session/new", to: redirect("/app/sign-in")
-  get "/admin/policy_sets", to: redirect("/app/policies")
-  get "/admin/policy_sets/:id", to: redirect("/app/policies")
-  get "/admin/policy_versions/:id", to: redirect("/app/policy/%{id}")
+  root to: "rails/health#show"
 
   namespace :admin do
     resource :session, only: %i[new create destroy]

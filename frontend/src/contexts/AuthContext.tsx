@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, ReactNode, useCallback } from "react";
-import { createSession, destroySession, getSession } from "@/lib/api";
+import { clearStoredAdminApiKey, createSession, destroySession, getSession, storedAdminApiKey, storeAdminApiKey } from "@/lib/api";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -15,14 +15,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    if (!storedAdminApiKey()) {
+      setIsAuthenticated(false);
+      setIsLoading(false);
+      return;
+    }
+
     getSession()
       .then(() => setIsAuthenticated(true))
-      .catch(() => setIsAuthenticated(false))
+      .catch(() => {
+        clearStoredAdminApiKey();
+        setIsAuthenticated(false);
+      })
       .finally(() => setIsLoading(false));
   }, []);
 
   const signIn = useCallback(async (key: string) => {
     await createSession(key);
+    storeAdminApiKey(key);
     setIsAuthenticated(true);
   }, []);
 

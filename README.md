@@ -3,14 +3,15 @@
 Netra is a Rails guardrails MVP for AI middleware. It sits between an agent and
 an LLM provider, resolves the active policy version for the caller, runs
 deterministic checks on both the input and the output, and returns an audited
-decision. It now includes both JSON APIs and a Hotwire admin console.
+decision. It includes JSON APIs and a separate React admin frontend.
 
 ## Current MVP
 
 - API-key protected `POST /v1/guarded_completions`
+- OpenAI-compatible `POST /v1/chat/completions`
 - Versioned policy sets and rules persisted in PostgreSQL
 - Admin APIs to create and update policy sets, policy versions, and rules
-- Hotwire admin console at `/admin`
+- React admin console in `frontend/`
 - Dry-run policy evaluation for draft versions
 - Deterministic guardrails:
   - maximum prompt size
@@ -33,16 +34,26 @@ decision. It now includes both JSON APIs and a Hotwire admin console.
 
 ## Local setup
 
+Start Rails:
+
 ```bash
 bundle install
 bin/rails db:create db:migrate db:seed
 bin/rails server
 ```
 
-Then open:
+Start the React frontend in another terminal:
+
+```bash
+cd frontend
+npm install
+VITE_API_BASE_URL=http://localhost:3000 npm run dev
+```
+
+Then open the frontend:
 
 ```text
-http://localhost:3000/admin/session/new
+http://localhost:8080
 ```
 
 The seed task creates:
@@ -78,8 +89,8 @@ curl -X POST http://localhost:3000/v1/guarded_completions \
 
 ## Admin examples
 
-The browser-based admin console uses the seeded admin API key and stores a
-server-side session after login. The JSON admin APIs remain available under
+The browser-based admin console uses the seeded admin API key and sends it to
+the backend as `X-Api-Key`. The JSON admin APIs remain available under
 `/v1/admin/*`.
 
 Create a draft policy version:
@@ -138,7 +149,7 @@ curl -X POST http://localhost:3000/v1/admin/policy_versions/1/clone \
 - OpenAI support is scaffolded through the provider adapter interface and can be
   extended without changing the policy pipeline.
 - Admin APIs require an admin-scoped API key.
-- The Hotwire admin console signs in with an admin API key and provides draft
+- The React admin console signs in with an admin API key and provides draft
   editing, cloning, publishing, rule management, and dry-run testing.
 - Active and archived policy versions are treated as immutable; mutate draft
   versions or clone an existing version into a draft first.

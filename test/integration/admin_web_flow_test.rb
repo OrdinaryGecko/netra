@@ -16,19 +16,18 @@ class AdminWebFlowTest < ActionDispatch::IntegrationTest
     _, @admin_key = ApiKey.issue!(client_application: @client_application, name: "Admin key", access_level: "admin")
   end
 
-  test "signs in and lands on the react admin app shell" do
+  test "signs in and lands on the server-rendered admin console" do
     post "/admin/session", params: { api_key: @admin_key }
     follow_redirect!
     follow_redirect!
 
     assert_response :success
-    assert_match '<div id="root"></div>', response.body
+    assert_match "Policy Sets", response.body
 
     get "/admin/policy_versions/#{@policy_version.id}"
-    follow_redirect!
 
     assert_response :success
-    assert_match '<div id="root"></div>', response.body
+    assert_match @policy_version.version, response.body
   end
 
   test "updates a rule through the web workflow" do

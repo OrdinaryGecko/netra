@@ -5,20 +5,16 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  base: "/app/",
+  base: "/",
   server: {
     host: "::",
     port: 8080,
     hmr: {
       overlay: false,
-    },
-    proxy: {
-      "/v1": "http://localhost:3000",
-      "/up": "http://localhost:3000"
     }
   },
   build: {
-    outDir: "../public/app",
+    outDir: "dist",
     emptyOutDir: true
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),

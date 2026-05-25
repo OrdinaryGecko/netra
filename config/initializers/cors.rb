@@ -7,7 +7,7 @@
 
 Rails.application.config.middleware.insert_before 0, Rack::Cors do
   allow do
-    origins ENV.fetch("NETRA_ALLOWED_ORIGINS", "*").split(",")
+    origins ENV.fetch("NETRA_ALLOWED_ORIGINS", "http://localhost:8080").split(",").map(&:strip)
 
     resource "*",
       headers: :any,

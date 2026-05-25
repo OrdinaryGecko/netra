@@ -50,10 +50,26 @@ type BackendPolicyVersion = {
 type RequestOptions = {
   method?: string;
   body?: unknown;
+  apiKey?: string | null;
 };
 
-function csrfToken() {
-  return document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+const ADMIN_API_KEY_STORAGE_KEY = "netra.adminApiKey";
+
+function apiUrl(path: string) {
+  return new URL(path, API_BASE_URL).toString();
+}
+
+export function storedAdminApiKey() {
+  return window.localStorage.getItem(ADMIN_API_KEY_STORAGE_KEY);
+}
+
+export function storeAdminApiKey(apiKey: string) {
+  window.localStorage.setItem(ADMIN_API_KEY_STORAGE_KEY, apiKey);
+}
+
+export function clearStoredAdminApiKey() {
+  window.localStorage.removeItem(ADMIN_API_KEY_STORAGE_KEY);
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -63,12 +79,11 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
 
-  const token = csrfToken();
-  if (token) headers["X-CSRF-Token"] = token;
+  const apiKey = options.apiKey === undefined ? storedAdminApiKey() : options.apiKey;
+  if (apiKey) headers["X-Api-Key"] = apiKey;
 
-  const response = await fetch(path, {
+  const response = await fetch(apiUrl(path), {
     method: options.method || "GET",
-    credentials: "same-origin",
     headers,
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
   });
@@ -116,16 +131,12 @@ export async function getSession() {
 }
 
 export async function createSession(apiKey: string) {
-  return request<SessionPayload>("/v1/admin/session", {
-    method: "POST",
-    body: { api_key: apiKey },
-  });
+  return request<SessionPayload>("/v1/admin/session", { apiKey });
 }
 
 export async function destroySession() {
-  return request<void>("/v1/admin/session", {
-    method: "DELETE",
-  });
+  clearStoredAdminApiKey();
+  return Promise.resolve();
 }
 
 export async function fetchPolicySets(): Promise<PolicySetSummary[]> {
