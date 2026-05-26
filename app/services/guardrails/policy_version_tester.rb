@@ -18,7 +18,8 @@ module Guardrails
       input_decision = Evaluator.call(
         rules: @policy_version.rules.enabled.where(stage: "input"),
         content: combined_input,
-        options: options
+        options: options,
+        messages: messages
       )
 
       if input_decision[:blocked]
@@ -92,12 +93,16 @@ module Guardrails
       when "max_message_chars"
         length = details[:length] || details["length"] || 0
         max = details[:max] || details["max"] || 4_000
+        scope = details[:scope] || details["scope"]
+        suffix = scope.present? ? " on #{scope.tr('_', ' ')}" : ""
 
-        evaluation[:outcome] == "matched" ? "Message is #{length} chars (max #{max})" : "Within limit (#{length}/#{max})"
+        evaluation[:outcome] == "matched" ? "Message is #{length} chars#{suffix} (max #{max})" : "Within limit#{suffix} (#{length}/#{max})"
       when "keyword_blocklist"
         keywords = Array(details[:keywords] || details["keywords"])
+        scope = details[:scope] || details["scope"]
+        suffix = scope.present? ? " in #{scope.tr('_', ' ')}" : ""
 
-        evaluation[:outcome] == "matched" ? "Blocked keywords found: #{keywords.join(', ')}" : "No blocked keywords found"
+        evaluation[:outcome] == "matched" ? "Blocked keywords found#{suffix}: #{keywords.join(', ')}" : "No blocked keywords found#{suffix}"
       when "pii_detector"
         types = Array(details[:types] || details["types"])
 

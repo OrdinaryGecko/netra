@@ -22,7 +22,8 @@ module Guardrails
       request_record = build_request!(policy_version:)
       input_decision = evaluate_stage!(
         rules: policy_version.rules.enabled.where(stage: "input"),
-        content: combined_input
+        content: combined_input,
+        messages: request_messages
       )
       persist_evaluations!(request_record:, evaluations: input_decision[:evaluations])
 
@@ -88,12 +89,13 @@ module Guardrails
       )
     end
 
-    def evaluate_stage!(rules:, content:, provider_response: nil)
+    def evaluate_stage!(rules:, content:, provider_response: nil, messages: nil)
       Evaluator.call(
         rules:,
         content:,
         options: @request_payload[:options] || {},
-        provider_response:
+        provider_response:,
+        messages:
       )
     end
 

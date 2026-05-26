@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Rule, RuleKind, RuleStage, RuleAction } from '@/lib/types';
+import { Rule, RuleKind, RuleStage, RuleAction, RuleScope } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,7 +22,10 @@ const defaultRule: Omit<Rule, 'id'> = {
   action: 'block',
   priority: 1,
   enabled: true,
-  config: { max: 4000 },
+  config: {
+    max: 4000,
+    scope: 'latest_user_message',
+  },
 };
 
 const ruleTemplates: Record<RuleKind, {
@@ -35,7 +38,10 @@ const ruleTemplates: Record<RuleKind, {
     name: 'limit-input-length',
     stage: 'input',
     action: 'block',
-    config: { max: 4000 },
+    config: {
+      max: 4000,
+      scope: 'latest_user_message',
+    },
   },
   keyword_blocklist: {
     name: 'block-prompt-injection-keywords',
@@ -46,6 +52,7 @@ const ruleTemplates: Record<RuleKind, {
         'ignore previous instructions',
         'reveal system prompt',
       ],
+      scope: 'latest_user_message',
     },
   },
   pii_detector: {
@@ -62,9 +69,27 @@ const ruleTemplates: Record<RuleKind, {
   },
 };
 
+const ruleScopes: Array<{ value: RuleScope; label: string }> = [
+  { value: 'latest_user_message', label: 'Latest User Message' },
+  { value: 'latest_message', label: 'Latest Message' },
+  { value: 'all_user_messages', label: 'All User Messages' },
+  { value: 'system_messages', label: 'System Messages' },
+  { value: 'recent_messages', label: 'Recent Messages' },
+  { value: 'full_conversation', label: 'Full Conversation' },
+];
+
 export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false }: RuleEditorDialogProps) {
   const [form, setForm] = useState<Omit<Rule, 'id'> & { id?: string }>(defaultRule);
   const [configStr, setConfigStr] = useState('{}');
+
+  const parsedConfig = (() => {
+    try {
+      return JSON.parse(configStr) as Record<string, unknown>;
+    } catch {
+      return {};
+    }
+  })();
+  const selectedScope = (parsedConfig.scope as RuleScope | undefined) || 'latest_user_message';
 
   useEffect(() => {
     if (rule) {
@@ -88,6 +113,38 @@ export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false
       config: template.config,
     }));
     setConfigStr(JSON.stringify(template.config, null, 2));
+  };
+
+  const updateConfig = (updates: Record<string, unknown>) => {
+    const nextConfig = {
+      ...parsedConfig,
+      ...updates,
+    };
+
+    setForm((currentForm) => ({
+      ...currentForm,
+      config: nextConfig,
+    }));
+    setConfigStr(JSON.stringify(nextConfig, null, 2));
+  };
+
+  const handleScopeChange = (scope: RuleScope) => {
+    const nextConfig = {
+      ...parsedConfig,
+      scope,
+    };
+
+    if (scope === 'recent_messages') {
+      nextConfig.message_count = parsedConfig.message_count || 4;
+    } else {
+      delete nextConfig.message_count;
+    }
+
+    setForm((currentForm) => ({
+      ...currentForm,
+      config: nextConfig,
+    }));
+    setConfigStr(JSON.stringify(nextConfig, null, 2));
   };
 
   const handleSave = () => {
@@ -166,6 +223,33 @@ export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false
               <Input type="number" min={1} value={form.priority} onChange={(e) => setForm({ ...form, priority: parseInt(e.target.value) || 1 })} disabled={readOnly} />
             </div>
           </div>
+          {form.stage === 'input' && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Scope</Label>
+                <Select value={selectedScope} onValueChange={(v) => handleScopeChange(v as RuleScope)} disabled={readOnly}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {ruleScopes.map((scope) => (
+                      <SelectItem key={scope.value} value={scope.value}>{scope.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {selectedScope === 'recent_messages' && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Message Count</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={Number(parsedConfig.message_count || 4)}
+                    onChange={(e) => updateConfig({ message_count: parseInt(e.target.value) || 1 })}
+                    disabled={readOnly}
+                  />
+                </div>
+              )}
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Config (JSON)</Label>
             <Textarea className="font-mono text-xs min-h-[100px]" value={configStr} onChange={(e) => setConfigStr(e.target.value)} disabled={readOnly} />

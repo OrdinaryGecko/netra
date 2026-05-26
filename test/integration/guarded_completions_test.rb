@@ -67,4 +67,63 @@ class GuardedCompletionsTest < ActionDispatch::IntegrationTest
     assert_equal "blocked", body["status"]
     assert_equal ["max-input"], body["reasons"]
   end
+
+  test "input rules default to latest user message scope" do
+    post "/v1/guarded_completions",
+      params: {
+        application_key: "test-app",
+        agent_identifier: "assistant",
+        environment: "test",
+        provider: "stub",
+        model: "stub-v1",
+        messages: [
+          { role: "user", content: "x" * 60 },
+          { role: "assistant", content: "Earlier response" },
+          { role: "user", content: "short" }
+        ],
+        options: { expected_output: { format: "json_object" } }
+      },
+      as: :json,
+      headers: { "X-Api-Key" => @plaintext_key }
+
+    assert_response :success
+    body = JSON.parse(response.body)
+
+    assert_equal "allowed", body["status"]
+  end
+
+  test "input rules can still evaluate the full conversation when configured" do
+    @policy_version = @policy_set.policy_versions.create!(version: "2", status: "draft")
+    @policy_version.rules.create!(
+      name: "max-full-conversation",
+      kind: "max_message_chars",
+      stage: "input",
+      action: "block",
+      priority: 10,
+      config: { max: 50, scope: "full_conversation" }
+    )
+    @policy_version.publish!
+
+    post "/v1/guarded_completions",
+      params: {
+        application_key: "test-app",
+        agent_identifier: "assistant",
+        environment: "test",
+        provider: "stub",
+        model: "stub-v1",
+        messages: [
+          { role: "user", content: "x" * 45 },
+          { role: "assistant", content: "ok" },
+          { role: "user", content: "short" }
+        ]
+      },
+      as: :json,
+      headers: { "X-Api-Key" => @plaintext_key }
+
+    assert_response :unprocessable_entity
+    body = JSON.parse(response.body)
+
+    assert_equal "blocked", body["status"]
+    assert_equal ["max-full-conversation"], body["reasons"]
+  end
 end
