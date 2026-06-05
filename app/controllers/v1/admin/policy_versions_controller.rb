@@ -7,7 +7,7 @@ module V1
       end
 
       def create
-        policy_set = current_client_application.policy_sets.find(policy_version_params[:policy_set_id])
+        policy_set = current_project.policy_sets.find(policy_version_params[:policy_set_id])
         policy_version = policy_set.policy_versions.new(policy_version_params.except(:policy_set_id))
 
         if policy_version.save
@@ -98,7 +98,7 @@ module V1
       end
 
       def policy_versions_scope
-        PolicyVersion.joins(:policy_set).where(policy_sets: { client_application_id: current_client_application.id })
+        PolicyVersion.joins(:policy_set).where(policy_sets: { project_id: current_project.id })
       end
     end
   end

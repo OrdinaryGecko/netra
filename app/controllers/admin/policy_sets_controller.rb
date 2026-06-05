@@ -4,17 +4,18 @@ module Admin
       if policy_sets.any?
         redirect_to admin_policy_set_path(policy_sets.first)
       else
-        @policy_set = current_client_application.policy_sets.new(environment: current_client_application.default_environment)
+        @policy_set = current_client_application.policy_sets.new(environment: current_project.default_environment, project: current_project)
       end
     end
 
     def show
-      @policy_set = current_client_application.policy_sets.includes(policy_versions: :rules).find(params[:id])
+      @policy_set = current_project.policy_sets.includes(policy_versions: :rules).find(params[:id])
       @new_policy_version = @policy_set.policy_versions.new(status: "draft")
     end
 
     def create
       @policy_set = current_client_application.policy_sets.new(policy_set_params)
+      @policy_set.project = current_project
 
       if @policy_set.save
         redirect_to admin_policy_set_path(@policy_set), notice: "Policy set created."
@@ -26,7 +27,7 @@ module Admin
     end
 
     def update
-      @policy_set = current_client_application.policy_sets.find(params[:id])
+      @policy_set = current_project.policy_sets.find(params[:id])
 
       if @policy_set.update(policy_set_params)
         redirect_to admin_policy_set_path(@policy_set), notice: "Policy set updated."

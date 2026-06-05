@@ -14,7 +14,8 @@ module V1
             id: Current.api_key.client_application.id,
             name: Current.api_key.client_application.name,
             key: Current.api_key.client_application.key
-          }
+          },
+          project: serialize_project(Current.project)
         }
       end
 
@@ -40,13 +41,32 @@ module V1
             id: api_key.client_application.id,
             name: api_key.client_application.name,
             key: api_key.client_application.key
-          }
+          },
+          project: serialize_project(api_key.project_context)
         }, status: :created
       end
 
       def destroy
         reset_session
         head :no_content
+      end
+
+      private
+
+      def serialize_project(project)
+        return nil unless project
+
+        {
+          id: project.id,
+          name: project.name,
+          key: project.key,
+          default_environment: project.default_environment,
+          organization: {
+            id: project.organization.id,
+            name: project.organization.name,
+            slug: project.organization.slug
+          }
+        }
       end
     end
   end

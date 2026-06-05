@@ -25,6 +25,7 @@ module ApiKeyAuthenticatable
     end
 
     Current.api_key = api_key
+    Current.project = api_key.project_context
   end
 
   def authenticate_from_header

@@ -4,6 +4,13 @@ type SessionPayload = {
   authenticated: boolean;
   api_key: { id: number; name: string };
   client_application: { id: number; name: string; key: string };
+  project?: {
+    id: number;
+    name: string;
+    key: string;
+    default_environment: string;
+    organization: { id: number; name: string; slug: string };
+  } | null;
 };
 
 type BackendPolicySet = {

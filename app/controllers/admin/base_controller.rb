@@ -1,7 +1,7 @@
 module Admin
   class BaseController < ApplicationController
     before_action :require_admin_session
-    helper_method :current_admin_api_key, :current_client_application, :policy_sets,
+    helper_method :current_admin_api_key, :current_client_application, :current_project, :policy_sets,
       :selected_policy_set_id, :selected_policy_version_id
 
     private
@@ -16,15 +16,22 @@ module Admin
       @current_admin_api_key ||= ApiKey.active.find_by(
         id: session[:admin_api_key_id],
         access_level: "admin"
-      )&.tap { |api_key| Current.api_key = api_key }
+      )&.tap do |api_key|
+        Current.api_key = api_key
+        Current.project = api_key.project_context
+      end
     end
 
     def current_client_application
       current_admin_api_key&.client_application
     end
 
+    def current_project
+      Current.project || current_client_application&.project
+    end
+
     def policy_sets
-      @policy_sets ||= current_client_application.policy_sets.includes(:policy_versions).order(:name)
+      @policy_sets ||= current_project.policy_sets.includes(:policy_versions).order(:name)
     end
 
     def selected_policy_set_id

@@ -8,6 +8,14 @@ module V1
       def current_client_application
         Current.api_key&.client_application
       end
+
+      def current_project
+        Current.project || current_client_application&.project
+      end
+
+      def current_organization
+        current_project&.organization
+      end
     end
   end
 end

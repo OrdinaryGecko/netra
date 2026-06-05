@@ -53,13 +53,13 @@ module Admin
 
     def accessible_policy_version(id)
       PolicyVersion.joins(:policy_set)
-        .where(policy_sets: { client_application_id: current_client_application.id })
+        .where(policy_sets: { project_id: current_project.id })
         .find(id)
     end
 
     def accessible_rule(id)
       Rule.joins(policy_version: :policy_set)
-        .where(policy_sets: { client_application_id: current_client_application.id })
+        .where(policy_sets: { project_id: current_project.id })
         .find(id)
     end
 

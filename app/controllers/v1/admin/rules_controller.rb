@@ -38,11 +38,11 @@ module V1
       end
 
       def rules_scope
-        Rule.joins(policy_version: :policy_set).where(policy_versions: { policy_set_id: current_client_application.policy_set_ids })
+        Rule.joins(policy_version: :policy_set).where(policy_sets: { project_id: current_project.id })
       end
 
       def policy_versions_scope
-        PolicyVersion.where(policy_set_id: current_client_application.policy_set_ids)
+        PolicyVersion.joins(:policy_set).where(policy_sets: { project_id: current_project.id })
       end
     end
   end

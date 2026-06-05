@@ -12,7 +12,7 @@ module Admin
     end
 
     def create
-      policy_set = current_client_application.policy_sets.find(policy_version_params[:policy_set_id])
+      policy_set = current_project.policy_sets.find(policy_version_params[:policy_set_id])
       policy_version = policy_set.policy_versions.new(
         version: policy_version_params[:version],
         status: policy_version_params[:status].presence || "draft",
@@ -75,7 +75,7 @@ module Admin
 
     def set_policy_version
       @policy_version = PolicyVersion.includes(:rules, :policy_set).joins(:policy_set)
-        .where(policy_sets: { client_application_id: current_client_application.id })
+        .where(policy_sets: { project_id: current_project.id })
         .find(params[:id])
     end
 

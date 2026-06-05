@@ -1,12 +1,13 @@
 module Guardrails
   class EvaluationPipeline
-    def self.call(api_key:, client_application:, agent:, request_payload:)
-      new(api_key:, client_application:, agent:, request_payload:).call
+    def self.call(api_key:, client_application:, agent:, request_payload:, project: nil)
+      new(api_key:, client_application:, agent:, request_payload:, project:).call
     end
 
-    def initialize(api_key:, client_application:, agent:, request_payload:)
+    def initialize(api_key:, client_application:, agent:, request_payload:, project: nil)
       @api_key = api_key
       @client_application = client_application
+      @project = project || api_key.project_context
       @agent = agent
       @request_payload = request_payload
       @trace_id = SecureRandom.uuid
@@ -16,6 +17,7 @@ module Guardrails
       RequestValidator.call!(@request_payload)
       policy_version = PolicyResolver.call!(
         client_application: @client_application,
+        project: @project,
         environment: environment
       )
 
@@ -68,8 +70,9 @@ module Guardrails
     def build_request!(policy_version:)
       GuardrailRequest.create!(
         client_application: @client_application,
+        project: @project,
         agent: @agent,
-        provider_config: @client_application.provider_configs.find_by(provider: @request_payload[:provider], active: true),
+        provider_config: provider_config,
         environment:,
         provider: @request_payload[:provider],
         model: @request_payload[:model],
@@ -162,6 +165,11 @@ module Guardrails
 
     def environment
       @request_payload[:environment]
+    end
+
+    def provider_config
+      provider_configs = @project&.provider_configs || @client_application.provider_configs
+      provider_configs.find_by(provider: @request_payload[:provider], active: true)
     end
 
     def masked_response(provider_response, output_text, masked)
