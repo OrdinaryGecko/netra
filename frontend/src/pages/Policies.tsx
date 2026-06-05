@@ -1,50 +1,54 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '@/contexts/AuthContext';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { useAuth, useCurrentProject } from '@/contexts/AuthContext';
+import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Input } from '@/components/ui/input';
-import { Shield, Plus, LogOut, Search, FileText, ChevronRight, GitBranch } from 'lucide-react';
+import { Plus, Search, FileText, ChevronRight, FolderKanban } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { createPolicySet, fetchPolicySets } from '@/lib/api';
+import { createPolicySet, fetchPolicySetsForProject } from '@/lib/api';
 
 export default function Policies() {
-  const { signOut } = useAuth();
+  const { projectId } = useParams<{ projectId: string }>();
+  const project = useCurrentProject(projectId);
+  const { projects } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
-  const [newEnvironment, setNewEnvironment] = useState('development');
 
   const policySetsQuery = useQuery({
-    queryKey: ['policy-sets'],
-    queryFn: fetchPolicySets,
+    queryKey: ['policy-sets', projectId],
+    queryFn: () => fetchPolicySetsForProject(projectId!),
+    enabled: Boolean(projectId && project),
   });
 
   const createPolicyMutation = useMutation({
     mutationFn: () => createPolicySet({
       name: newName.trim(),
       description: newDesc.trim(),
-      environment: newEnvironment.trim() || 'development',
+      environment: project?.defaultEnvironment || 'development',
+      projectId,
     }),
     onSuccess: async ({ policyVersion }) => {
-      await queryClient.invalidateQueries({ queryKey: ['policy-sets'] });
+      await queryClient.invalidateQueries({ queryKey: ['policy-sets', projectId] });
+      await queryClient.invalidateQueries({ queryKey: ['projects'] });
       setNewName('');
       setNewDesc('');
-      setNewEnvironment('development');
       setCreateOpen(false);
       toast.success('Policy created with an initial draft version');
-      navigate(`/policy/${policyVersion.id}`);
+      navigate(`/projects/${projectId}/policy/${policyVersion.id}`);
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -58,22 +62,21 @@ export default function Policies() {
     );
   }, [policySetsQuery.data, search]);
 
-  const openPolicyVersion = (versionId: string) => {
-    navigate(`/policy/${versionId}`);
-  };
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/sign-in');
-  };
+  const latestVersion = (policy: typeof filtered[number]) =>
+    policy.policyVersions[0];
+  const activeVersion = (policy: typeof filtered[number]) =>
+    policy.policyVersions.find((version) => version.status === 'active');
 
   const handleCreate = () => {
     if (!newName.trim()) return;
     createPolicyMutation.mutate();
   };
 
+  if (!projectId) return <Navigate to="/projects" replace />;
+  if (projects.length > 0 && !project) return <Navigate to="/projects" replace />;
+
   if (policySetsQuery.isLoading) {
-    return <div className="min-h-screen bg-background flex items-center justify-center text-sm text-muted-foreground">Loading policy sets...</div>;
+    return <div className="min-h-screen bg-background flex items-center justify-center text-sm text-muted-foreground">Loading policies...</div>;
   }
 
   if (policySetsQuery.error instanceof Error) {
@@ -82,36 +85,24 @@ export default function Policies() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => navigate('/policies')}
-            className="flex items-center gap-2 rounded-md outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            aria-label="Go to homepage"
-          >
-            <Shield className="h-5 w-5 text-primary" />
-            <span className="font-mono font-bold text-lg">Netra</span>
-          </button>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Button variant="ghost" size="sm" onClick={handleSignOut} className="font-mono text-xs gap-1.5">
-              <LogOut className="h-3.5 w-3.5" />
-              Sign Out
-            </Button>
-          </div>
-        </div>
-      </header>
+      <AppHeader currentProject={project} />
 
       <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold font-mono">Policy Sets</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Manage your AI guardrail policies and their versions.
-            </p>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <FolderKanban className="h-5 w-5 text-primary" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold font-mono truncate">{project?.name}</h1>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Policy sets scoped to this project.
+              </p>
+            </div>
           </div>
-          <Button onClick={() => setCreateOpen(true)} className="font-mono text-xs gap-1.5">
+          <Button onClick={() => setCreateOpen(true)} className="font-mono text-xs gap-1.5 shrink-0">
             <Plus className="h-3.5 w-3.5" />
             New Policy
           </Button>
@@ -122,15 +113,23 @@ export default function Policies() {
           <Input
             placeholder="Search policies..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(event) => setSearch(event.target.value)}
             className="pl-9 font-mono text-xs"
           />
         </div>
 
         <div className="grid gap-4">
           {filtered.map((policy) => {
+            const latest = latestVersion(policy);
+            const active = activeVersion(policy);
+            if (!latest) return null;
+
             return (
-              <Card key={policy.id} className="overflow-hidden">
+              <Card
+                key={policy.id}
+                className="hover:border-primary/40 transition-colors cursor-pointer group"
+                onClick={() => navigate(`/projects/${projectId}/policy/${latest.id}`)}
+              >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
@@ -142,48 +141,34 @@ export default function Policies() {
                         <CardDescription className="text-xs mt-0.5">{policy.description}</CardDescription>
                       </div>
                     </div>
-                    <div className="text-right text-xs text-muted-foreground font-mono">
-                      <div>{policy.policyVersions.length} version{policy.policyVersions.length !== 1 ? 's' : ''}</div>
-                      <div>{policy.environment}</div>
-                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0">
-                  <div className="space-y-2">
-                    {policy.policyVersions.map((version) => (
-                      <button
-                        key={version.id}
-                        type="button"
-                        onClick={() => openPolicyVersion(version.id)}
-                        className="w-full rounded-lg border border-border bg-background/70 px-4 py-3 text-left transition-colors hover:border-primary/40 hover:bg-muted/40"
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <GitBranch className="h-3.5 w-3.5 text-muted-foreground" />
-                              <span className="font-mono text-sm font-medium">{version.version}</span>
-                              <StatusBadge status={version.status} />
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              {version.description || 'No description'}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono shrink-0">
-                            <span>{version.rulesCount || 0} rules</span>
-                            <ChevronRight className="h-4 w-4" />
-                          </div>
-                        </div>
-                      </button>
-                    ))}
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground font-mono flex-wrap">
+                    <span>{policy.policyVersions.length} version{policy.policyVersions.length !== 1 ? 's' : ''}</span>
+                    <span>·</span>
+                    {active && (
+                      <>
+                        <span className="flex items-center gap-1.5">
+                          Active: <StatusBadge status="active" /> v{active.version}
+                        </span>
+                        <span>·</span>
+                      </>
+                    )}
+                    <span className="flex items-center gap-1.5">
+                      Latest: <StatusBadge status={latest.status} /> v{latest.version}
+                    </span>
+                    <span>·</span>
+                    <span>{latest.rulesCount || 0} rule{latest.rulesCount !== 1 ? 's' : ''}</span>
                   </div>
                 </CardContent>
               </Card>
             );
           })}
-
           {filtered.length === 0 && (
             <div className="text-center py-12 text-muted-foreground">
-              <p className="font-mono text-sm">No policies found</p>
+              <p className="font-mono text-sm">No policies in this project yet</p>
             </div>
           )}
         </div>
@@ -200,16 +185,7 @@ export default function Policies() {
               <Input
                 placeholder="e.g. Production Safety Policy"
                 value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                className="font-mono text-sm"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="font-mono text-xs uppercase tracking-wider">Environment</Label>
-              <Input
-                placeholder="development"
-                value={newEnvironment}
-                onChange={(e) => setNewEnvironment(e.target.value)}
+                onChange={(event) => setNewName(event.target.value)}
                 className="font-mono text-sm"
               />
             </div>
@@ -218,7 +194,7 @@ export default function Policies() {
               <Textarea
                 placeholder="What does this policy set cover?"
                 value={newDesc}
-                onChange={(e) => setNewDesc(e.target.value)}
+                onChange={(event) => setNewDesc(event.target.value)}
                 className="font-mono text-sm resize-none"
                 rows={3}
               />

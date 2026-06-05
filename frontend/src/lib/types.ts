@@ -4,6 +4,55 @@ export type RuleStage = "input" | "output";
 export type RuleAction = "allow" | "block" | "mask" | "log_only";
 export type RuleScope = "latest_user_message" | "latest_message" | "all_user_messages" | "system_messages" | "recent_messages" | "full_conversation";
 
+export type MembershipRole = "owner" | "admin" | "editor" | "viewer" | "auditor";
+
+export interface Organization {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export interface Project {
+  id: string;
+  organizationId: string;
+  name: string;
+  slug: string;
+  description: string;
+  environment: "production" | "staging" | "development";
+  policySetsCount: number;
+  updatedAt?: string | null;
+  key: string;
+  defaultEnvironment: string;
+  upstreamBaseUrl?: string | null;
+  upstreamProvider?: string | null;
+  failMode: "open" | "closed";
+  active: boolean;
+  organization: Organization;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+}
+
+export interface Membership {
+  id: string;
+  userId: string;
+  organizationId: string;
+  role: MembershipRole;
+}
+
+export interface AdminSession {
+  authenticated: boolean;
+  apiKey: { id: number; name: string };
+  clientApplication: { id: number; name: string; key: string };
+  project?: Project | null;
+  organization?: Organization | null;
+  user?: User | null;
+  membership?: Membership | null;
+}
+
 export interface Rule {
   id: string;
   name: string;

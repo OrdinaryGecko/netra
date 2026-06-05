@@ -25,7 +25,7 @@ module ApiKeyAuthenticatable
     end
 
     Current.api_key = api_key
-    Current.project = api_key.project_context
+    Current.project = requested_project_context(api_key) || api_key.project_context
   end
 
   def authenticate_from_header
@@ -52,5 +52,15 @@ module ApiKeyAuthenticatable
       id: session[:admin_api_key_id],
       access_level: "admin"
     )
+  end
+
+  def requested_project_context(api_key)
+    project_id = request.headers["X-Netra-Project-Id"].to_s.presence
+    return nil unless project_id
+
+    organization = api_key.project_context&.organization
+    return nil unless organization
+
+    organization.projects.find_by(id: project_id)
   end
 end

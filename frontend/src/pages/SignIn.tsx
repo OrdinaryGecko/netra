@@ -24,7 +24,7 @@ export default function SignIn() {
     try {
       setSubmitting(true);
       await signIn(key.trim());
-      navigate('/policies');
+      navigate('/projects');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to sign in');
     } finally {

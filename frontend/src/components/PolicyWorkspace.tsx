@@ -23,11 +23,11 @@ export function PolicyWorkspace() {
   const [editorOpen, setEditorOpen] = useState(false);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { versionId } = useParams<{ versionId: string }>();
+  const { projectId, versionId } = useParams<{ projectId: string; versionId: string }>();
 
   const versionQuery = useQuery({
-    queryKey: ['policy-version', versionId],
-    queryFn: () => fetchPolicyVersion(versionId!),
+    queryKey: ['policy-version', projectId, versionId],
+    queryFn: () => fetchPolicyVersion(versionId!, projectId),
     enabled: Boolean(versionId),
   });
 
@@ -37,14 +37,14 @@ export function PolicyWorkspace() {
   const persistedRule = (rule: Rule) => version?.rules.some((existingRule) => existingRule.id === rule.id) ?? false;
 
   const refreshWorkspace = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['policy-sets'] });
+    await queryClient.invalidateQueries({ queryKey: ['policy-sets', projectId] });
     await queryClient.invalidateQueries({ queryKey: ['policy-version'] });
   };
 
   const publishMutation = useMutation({
-    mutationFn: (policyVersion: PolicyVersion) => publishPolicyVersion(policyVersion.id),
+    mutationFn: (policyVersion: PolicyVersion) => publishPolicyVersion(policyVersion.id, projectId),
     onSuccess: async (policyVersion) => {
-      navigate(`/policy/${policyVersion.id}`, { replace: true });
+      navigate(`/projects/${projectId}/policy/${policyVersion.id}`, { replace: true });
       await refreshWorkspace();
       toast.success('Policy version published successfully');
     },
@@ -52,9 +52,9 @@ export function PolicyWorkspace() {
   });
 
   const cloneMutation = useMutation({
-    mutationFn: (policyVersion: PolicyVersion) => clonePolicyVersion(policyVersion),
+    mutationFn: (policyVersion: PolicyVersion) => clonePolicyVersion(policyVersion, projectId),
     onSuccess: async (policyVersion) => {
-      navigate(`/policy/${policyVersion.id}`);
+      navigate(`/projects/${projectId}/policy/${policyVersion.id}`);
       await refreshWorkspace();
       toast.success('New draft version created');
     },
@@ -63,10 +63,10 @@ export function PolicyWorkspace() {
 
   const saveRuleMutation = useMutation({
     mutationFn: async (rule: Rule) => {
-      if (persistedRule(rule)) return updateRule(rule);
+      if (persistedRule(rule)) return updateRule(rule, projectId);
 
       const { id: _id, ...ruleWithoutId } = rule;
-      return createRule(versionId!, ruleWithoutId);
+      return createRule(versionId!, ruleWithoutId, projectId);
     },
     onSuccess: async (_savedRule, rule) => {
       await refreshWorkspace();
@@ -78,7 +78,7 @@ export function PolicyWorkspace() {
   });
 
   const deleteRuleMutation = useMutation({
-    mutationFn: (ruleId: string) => deleteRule(ruleId),
+    mutationFn: (ruleId: string) => deleteRule(ruleId, projectId),
     onSuccess: async () => {
       await refreshWorkspace();
       toast.success('Rule deleted');
@@ -134,7 +134,7 @@ export function PolicyWorkspace() {
             Sign in with an admin API key first, then return to the React app.
           </p>
           <Button asChild>
-            <a href="/admin/session/new">Open admin sign-in</a>
+            <a href="/sign-in">Open admin sign-in</a>
           </Button>
         </div>
       </div>
@@ -169,7 +169,7 @@ export function PolicyWorkspace() {
             />
           </TabsContent>
           <TabsContent value="dryrun">
-            <DryRunPanel policyVersionId={version.id} />
+            <DryRunPanel policyVersionId={version.id} projectId={projectId} />
           </TabsContent>
         </Tabs>
       </div>

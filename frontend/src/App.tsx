@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import SignIn from "./pages/SignIn";
 import Policies from "./pages/Policies";
+import Projects from "./pages/Projects";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
@@ -23,9 +24,12 @@ const App = () => (
           <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <Routes>
               <Route path="/sign-in" element={<SignIn />} />
-              <Route path="/policies" element={<ProtectedRoute><Policies /></ProtectedRoute>} />
-              <Route path="/policy/:versionId" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-              <Route path="/" element={<Navigate to="/policies" replace />} />
+              <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
+              <Route path="/projects/:projectId/policies" element={<ProtectedRoute><Policies /></ProtectedRoute>} />
+              <Route path="/projects/:projectId/policy/:versionId" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+              <Route path="/policies" element={<Navigate to="/projects" replace />} />
+              <Route path="/policy/:versionId" element={<Navigate to="/projects" replace />} />
+              <Route path="/" element={<Navigate to="/projects" replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

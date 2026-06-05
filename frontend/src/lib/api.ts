@@ -1,4 +1,4 @@
-import { ApiErrorPayload, DryRunResult, PolicySetSummary, PolicyVersion, Rule } from "./types";
+import { AdminSession, ApiErrorPayload, DryRunResult, PolicySetSummary, PolicyVersion, Project, Rule } from "./types";
 
 type SessionPayload = {
   authenticated: boolean;
@@ -11,6 +11,19 @@ type SessionPayload = {
     default_environment: string;
     organization: { id: number; name: string; slug: string };
   } | null;
+};
+
+type BackendProject = {
+  id: number;
+  name: string;
+  key: string;
+  default_environment: string;
+  upstream_base_url?: string | null;
+  upstream_provider?: string | null;
+  fail_mode: "open" | "closed";
+  active: boolean;
+  organization: { id: number; name: string; slug: string };
+  policy_sets_count: number;
 };
 
 type BackendPolicySet = {
@@ -58,6 +71,7 @@ type RequestOptions = {
   method?: string;
   body?: unknown;
   apiKey?: string | null;
+  projectId?: string | null;
 };
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
@@ -88,6 +102,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   const apiKey = options.apiKey === undefined ? storedAdminApiKey() : options.apiKey;
   if (apiKey) headers["X-Api-Key"] = apiKey;
+  if (options.projectId) headers["X-Netra-Project-Id"] = options.projectId;
 
   const response = await fetch(apiUrl(path), {
     method: options.method || "GET",
@@ -133,12 +148,91 @@ function mapPolicyVersion(policyVersion: BackendPolicyVersion): PolicyVersion {
   };
 }
 
+function environmentFromProject(project: BackendProject): Project["environment"] {
+  const value = project.default_environment.toLowerCase();
+  if (value === "production" || value === "staging" || value === "development") return value;
+  return "development";
+}
+
+function mapProject(project: BackendProject): Project {
+  return {
+    id: String(project.id),
+    organizationId: String(project.organization.id),
+    name: project.name,
+    slug: project.key,
+    description: project.upstream_provider
+      ? `${project.upstream_provider} runtime project`
+      : "AI workload protected by Netra guardrails",
+    environment: environmentFromProject(project),
+    key: project.key,
+    defaultEnvironment: project.default_environment,
+    upstreamBaseUrl: project.upstream_base_url,
+    upstreamProvider: project.upstream_provider,
+    failMode: project.fail_mode,
+    active: project.active,
+    organization: {
+      id: String(project.organization.id),
+      name: project.organization.name,
+      slug: project.organization.slug,
+    },
+    policySetsCount: project.policy_sets_count,
+  };
+}
+
+function mapSession(payload: SessionPayload): AdminSession {
+  return {
+    authenticated: payload.authenticated,
+    apiKey: payload.api_key,
+    clientApplication: payload.client_application,
+    project: payload.project
+      ? mapProject({
+          id: payload.project.id,
+          name: payload.project.name,
+          key: payload.project.key,
+          default_environment: payload.project.default_environment,
+          fail_mode: "open",
+          active: true,
+          organization: payload.project.organization,
+          policy_sets_count: 0,
+        })
+      : null,
+    organization: payload.project
+      ? {
+          id: String(payload.project.organization.id),
+          name: payload.project.organization.name,
+          slug: payload.project.organization.slug,
+        }
+      : null,
+    user: payload.project
+      ? {
+          id: String(payload.api_key.id),
+          email: `${payload.api_key.name.toLowerCase().replace(/\s+/g, "-")}@netra.local`,
+          name: payload.api_key.name,
+        }
+      : null,
+    membership: payload.project
+      ? {
+          id: `membership-${payload.api_key.id}`,
+          userId: String(payload.api_key.id),
+          organizationId: String(payload.project.organization.id),
+          role: "owner",
+        }
+      : null,
+  };
+}
+
 export async function getSession() {
-  return request<SessionPayload>("/v1/admin/session");
+  const payload = await request<SessionPayload>("/v1/admin/session");
+  return mapSession(payload);
 }
 
 export async function createSession(apiKey: string) {
-  return request<SessionPayload>("/v1/admin/session", { apiKey });
+  const payload = await request<SessionPayload>("/v1/admin/session", {
+    method: "POST",
+    apiKey,
+    body: { api_key: apiKey },
+  });
+  return mapSession(payload);
 }
 
 export async function destroySession() {
@@ -170,21 +264,52 @@ export async function fetchPolicySets(): Promise<PolicySetSummary[]> {
   }));
 }
 
-export async function fetchPolicyVersion(policyVersionId: string): Promise<PolicyVersion> {
-  const payload = await request<BackendPolicyVersion>(`/v1/admin/policy_versions/${policyVersionId}`);
+export async function fetchPolicySetsForProject(projectId: string): Promise<PolicySetSummary[]> {
+  const payload = await request<BackendPolicySet[]>("/v1/admin/policy_sets", { projectId });
+  return payload.map((policySet) => ({
+    id: String(policySet.id),
+    name: policySet.name,
+    environment: policySet.environment,
+    active: policySet.active,
+    description: String(
+      policySet.policy_versions?.[0]?.definition?.description ||
+      `Policies for ${policySet.environment}`
+    ),
+    policyVersions: (policySet.policy_versions || []).map((version) => ({
+      id: String(version.id),
+      version: version.version,
+      status: version.status,
+      publishedAt: version.published_at,
+      updatedAt: version.updated_at || null,
+      createdAt: version.created_at || null,
+      description: String(version.definition?.description || ""),
+      rulesCount: version.rules_count || 0,
+    })),
+  }));
+}
+
+export async function fetchProjects(): Promise<Project[]> {
+  const payload = await request<BackendProject[]>("/v1/admin/projects");
+  return payload.map(mapProject);
+}
+
+export async function fetchPolicyVersion(policyVersionId: string, projectId?: string): Promise<PolicyVersion> {
+  const payload = await request<BackendPolicyVersion>(`/v1/admin/policy_versions/${policyVersionId}`, { projectId });
   return mapPolicyVersion(payload);
 }
 
-export async function publishPolicyVersion(policyVersionId: string): Promise<PolicyVersion> {
+export async function publishPolicyVersion(policyVersionId: string, projectId?: string): Promise<PolicyVersion> {
   const payload = await request<BackendPolicyVersion>(`/v1/admin/policy_versions/${policyVersionId}/publish`, {
     method: "POST",
+    projectId,
   });
   return mapPolicyVersion(payload);
 }
 
-export async function clonePolicyVersion(policyVersion: PolicyVersion): Promise<PolicyVersion> {
+export async function clonePolicyVersion(policyVersion: PolicyVersion, projectId?: string): Promise<PolicyVersion> {
   const payload = await request<BackendPolicyVersion>(`/v1/admin/policy_versions/${policyVersion.id}/clone`, {
     method: "POST",
+    projectId,
     body: {
       policy_version: {
         version: `${policyVersion.version}-draft`,
@@ -197,9 +322,10 @@ export async function clonePolicyVersion(policyVersion: PolicyVersion): Promise<
   return mapPolicyVersion(payload);
 }
 
-export async function createPolicySet(params: { name: string; environment: string; description: string }) {
+export async function createPolicySet(params: { name: string; environment: string; description: string; projectId?: string }) {
   const policySet = await request<{ id: number; name: string; environment: string; active: boolean }>("/v1/admin/policy_sets", {
     method: "POST",
+    projectId: params.projectId,
     body: {
       policy_set: {
         name: params.name,
@@ -211,6 +337,7 @@ export async function createPolicySet(params: { name: string; environment: strin
 
   const policyVersion = await request<BackendPolicyVersion>("/v1/admin/policy_versions", {
     method: "POST",
+    projectId: params.projectId,
     body: {
       policy_version: {
         policy_set_id: policySet.id,
@@ -229,9 +356,10 @@ export async function createPolicySet(params: { name: string; environment: strin
   };
 }
 
-export async function createRule(policyVersionId: string, rule: Omit<Rule, "id">): Promise<Rule> {
+export async function createRule(policyVersionId: string, rule: Omit<Rule, "id">, projectId?: string): Promise<Rule> {
   const payload = await request<BackendRule>("/v1/admin/rules", {
     method: "POST",
+    projectId,
     body: {
       rule: {
         policy_version_id: policyVersionId,
@@ -248,9 +376,10 @@ export async function createRule(policyVersionId: string, rule: Omit<Rule, "id">
   return mapRule(payload);
 }
 
-export async function updateRule(rule: Rule): Promise<Rule> {
+export async function updateRule(rule: Rule, projectId?: string): Promise<Rule> {
   const payload = await request<BackendRule>(`/v1/admin/rules/${rule.id}`, {
     method: "PATCH",
+    projectId,
     body: {
       rule: {
         name: rule.name,
@@ -266,11 +395,11 @@ export async function updateRule(rule: Rule): Promise<Rule> {
   return mapRule(payload);
 }
 
-export async function deleteRule(ruleId: string): Promise<void> {
-  await request(`/v1/admin/rules/${ruleId}`, { method: "DELETE" });
+export async function deleteRule(ruleId: string, projectId?: string): Promise<void> {
+  await request(`/v1/admin/rules/${ruleId}`, { method: "DELETE", projectId });
 }
 
-export async function dryRunPolicyVersion(policyVersionId: string, content: string): Promise<DryRunResult> {
+export async function dryRunPolicyVersion(policyVersionId: string, content: string, projectId?: string): Promise<DryRunResult> {
   const payload = await request<{
     status: "allowed" | "blocked";
     action: Rule["action"];
@@ -280,6 +409,7 @@ export async function dryRunPolicyVersion(policyVersionId: string, content: stri
     evaluations: DryRunResult["evaluations"];
   }>(`/v1/admin/policy_versions/${policyVersionId}/test`, {
     method: "POST",
+    projectId,
     body: {
       provider: "stub",
       model: "stub-v1",

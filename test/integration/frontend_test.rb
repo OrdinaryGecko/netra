@@ -54,6 +54,24 @@ class FrontendTest < ActionDispatch::IntegrationTest
     assert body.all? { |project| project["organization"]["slug"] == @client_application.project.organization.slug }
   end
 
+  test "admin policy APIs can be scoped to another project in the same organization" do
+    other_application = ClientApplication.create!(name: "Other Project App", key: "other-project-app")
+    other_policy_set = other_application.policy_sets.create!(name: "other-default", environment: "test")
+    other_policy_set.policy_versions.create!(version: "1", status: "draft", definition: { "description" => "Other draft" })
+
+    get "/v1/admin/policy_sets",
+      as: :json,
+      headers: {
+        "X-Api-Key" => @admin_key,
+        "X-Netra-Project-Id" => other_application.project.id.to_s
+      }
+
+    assert_response :success
+    names = JSON.parse(response.body).map { |policy_set| policy_set["name"] }
+
+    assert_equal ["other-default"], names
+  end
+
   test "policy sets index returns all policy versions with version metadata" do
     @policy_set.policy_versions.create!(version: "2", status: "draft", definition: { "description" => "Second draft" })
 

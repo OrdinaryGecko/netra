@@ -6,7 +6,7 @@ module V1
       private
 
       def current_client_application
-        Current.api_key&.client_application
+        current_project&.client_applications&.first || Current.api_key&.client_application
       end
 
       def current_project

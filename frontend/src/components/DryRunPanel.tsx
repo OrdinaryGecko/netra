@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 
 interface DryRunPanelProps {
   policyVersionId: string;
+  projectId?: string;
 }
 
 const actionIcons: Record<string, typeof CheckCircle2> = {
@@ -52,11 +53,11 @@ function evaluationTriggered(evaluation: DryRunEvaluation) {
   return evaluation.outcome === 'matched';
 }
 
-export function DryRunPanel({ policyVersionId }: DryRunPanelProps) {
+export function DryRunPanel({ policyVersionId, projectId }: DryRunPanelProps) {
   const [payload, setPayload] = useState('Hello, my email is john@example.com and my phone is 555-123-4567.');
   const [result, setResult] = useState<DryRunResult | null>(null);
   const dryRunMutation = useMutation({
-    mutationFn: () => dryRunPolicyVersion(policyVersionId, payload),
+    mutationFn: () => dryRunPolicyVersion(policyVersionId, payload, projectId),
     onSuccess: (nextResult) => setResult(nextResult),
     onError: (error: Error) => toast.error(error.message),
   });
