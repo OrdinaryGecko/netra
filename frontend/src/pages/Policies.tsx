@@ -10,13 +10,15 @@ import { Input } from '@/components/ui/input';
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { Plus, Search, FileText, ChevronRight, FolderKanban, ChevronDown } from 'lucide-react';
+import { Plus, Search, FileText, ChevronRight, FolderKanban, ChevronDown, Plug, ListTree } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { IntegrationPanel } from '@/components/IntegrationPanel';
 import { createPolicySet, fetchPolicySetsForProject } from '@/lib/api';
 
 export default function Policies() {
@@ -111,119 +113,138 @@ export default function Policies() {
           </Button>
         </div>
 
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search policies..."
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            className="pl-9 font-mono text-xs"
-          />
-        </div>
+        <Tabs defaultValue="sets" className="w-full">
+          <TabsList className="font-mono text-xs">
+            <TabsTrigger value="sets" className="gap-1.5">
+              <ListTree className="h-3.5 w-3.5" />
+              Policy Sets
+            </TabsTrigger>
+            <TabsTrigger value="integration" className="gap-1.5">
+              <Plug className="h-3.5 w-3.5" />
+              Integration
+            </TabsTrigger>
+          </TabsList>
 
-        <div className="grid gap-4">
-          {filtered.map((policy) => {
-            const latest = latestVersion(policy);
-            const active = activeVersion(policy);
-            if (!latest) return null;
-            const sortedVersions = [...policy.policyVersions].sort((a, b) => {
-              const av = parseInt(a.version, 10) || 0;
-              const bv = parseInt(b.version, 10) || 0;
-              return bv - av;
-            });
-
-            return (
-              <Card
-                key={policy.id}
-                className="hover:border-primary/40 transition-colors group"
-              >
-                <CardHeader
-                  className="pb-3 cursor-pointer"
-                  onClick={() => navigate(`/projects/${projectId}/policy/${latest.id}`)}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                        <FileText className="h-4 w-4 text-primary" />
-                      </div>
-                      <div className="min-w-0">
-                        <CardTitle className="text-base font-mono truncate">{policy.name}</CardTitle>
-                        <CardDescription className="text-xs mt-0.5">{policy.description}</CardDescription>
-                      </div>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-1 shrink-0" />
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0 space-y-3">
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground font-mono flex-wrap">
-                    <span>{policy.policyVersions.length} version{policy.policyVersions.length !== 1 ? 's' : ''}</span>
-                    <span>·</span>
-                    {active ? (
-                      <span className="flex items-center gap-1.5">
-                        Active: <StatusBadge status="active" /> v{active.version}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground/70">No active version</span>
-                    )}
-                    <span>·</span>
-                    <span className="flex items-center gap-1.5">
-                      Latest: <StatusBadge status={latest.status} /> v{latest.version}
-                    </span>
-                    <span>·</span>
-                    <span>{latest.rulesCount || 0} rule{latest.rulesCount !== 1 ? 's' : ''}</span>
-                  </div>
-
-                  {sortedVersions.length > 1 && (
-                    <Collapsible>
-                      <CollapsibleTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="font-mono text-xs gap-1.5 h-7 px-2 -ml-2 text-muted-foreground hover:text-foreground"
-                          onClick={(event) => event.stopPropagation()}
-                        >
-                          <ChevronDown className="h-3.5 w-3.5" />
-                          View versions
-                        </Button>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="pt-2">
-                        <div className="border border-border rounded-md divide-y divide-border overflow-hidden">
-                          {sortedVersions.map((version) => (
-                            <button
-                              key={version.id}
-                              onClick={() => navigate(`/projects/${projectId}/policy/${version.id}`)}
-                              className="w-full flex items-center justify-between gap-3 px-3 py-2 text-left hover:bg-muted/50 transition-colors"
-                            >
-                              <div className="flex items-center gap-3 min-w-0">
-                                <span className="font-mono text-xs text-foreground">v{version.version}</span>
-                                <StatusBadge status={version.status} />
-                                <span className="text-xs font-mono text-muted-foreground">
-                                  {version.rulesCount || 0} rule{version.rulesCount !== 1 ? 's' : ''}
-                                </span>
-                              </div>
-                              <span className="text-xs font-mono text-muted-foreground shrink-0">
-                                {version.updatedAt
-                                  ? new Date(version.updatedAt).toLocaleDateString('en-US', {
-                                      month: 'short', day: 'numeric', year: 'numeric',
-                                    })
-                                  : '—'}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-          {filtered.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground">
-              <p className="font-mono text-sm">No policies in this project yet</p>
+          <TabsContent value="sets" className="mt-6 space-y-4">
+            <div className="relative max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search policies..."
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                className="pl-9 font-mono text-xs"
+              />
             </div>
-          )}
-        </div>
+
+            <div className="grid gap-4">
+              {filtered.map((policy) => {
+                const latest = latestVersion(policy);
+                const active = activeVersion(policy);
+                if (!latest) return null;
+                const sortedVersions = [...policy.policyVersions].sort((a, b) => {
+                  const av = parseInt(a.version, 10) || 0;
+                  const bv = parseInt(b.version, 10) || 0;
+                  return bv - av;
+                });
+
+                return (
+                  <Card
+                    key={policy.id}
+                    className="hover:border-primary/40 transition-colors group"
+                  >
+                    <CardHeader
+                      className="pb-3 cursor-pointer"
+                      onClick={() => navigate(`/projects/${projectId}/policy/${latest.id}`)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                            <FileText className="h-4 w-4 text-primary" />
+                          </div>
+                          <div className="min-w-0">
+                            <CardTitle className="text-base font-mono truncate">{policy.name}</CardTitle>
+                            <CardDescription className="text-xs mt-0.5">{policy.description}</CardDescription>
+                          </div>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-1 shrink-0" />
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-0 space-y-3">
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground font-mono flex-wrap">
+                        <span>{policy.policyVersions.length} version{policy.policyVersions.length !== 1 ? 's' : ''}</span>
+                        <span>·</span>
+                        {active ? (
+                          <span className="flex items-center gap-1.5">
+                            Active: <StatusBadge status="active" /> v{active.version}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground/70">No active version</span>
+                        )}
+                        <span>·</span>
+                        <span className="flex items-center gap-1.5">
+                          Latest: <StatusBadge status={latest.status} /> v{latest.version}
+                        </span>
+                        <span>·</span>
+                        <span>{latest.rulesCount || 0} rule{latest.rulesCount !== 1 ? 's' : ''}</span>
+                      </div>
+
+                      {sortedVersions.length > 1 && (
+                        <Collapsible>
+                          <CollapsibleTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="font-mono text-xs gap-1.5 h-7 px-2 -ml-2 text-muted-foreground hover:text-foreground"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              <ChevronDown className="h-3.5 w-3.5" />
+                              View versions
+                            </Button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="pt-2">
+                            <div className="border border-border rounded-md divide-y divide-border overflow-hidden">
+                              {sortedVersions.map((version) => (
+                                <button
+                                  key={version.id}
+                                  onClick={() => navigate(`/projects/${projectId}/policy/${version.id}`)}
+                                  className="w-full flex items-center justify-between gap-3 px-3 py-2 text-left hover:bg-muted/50 transition-colors"
+                                >
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    <span className="font-mono text-xs text-foreground">v{version.version}</span>
+                                    <StatusBadge status={version.status} />
+                                    <span className="text-xs font-mono text-muted-foreground">
+                                      {version.rulesCount || 0} rule{version.rulesCount !== 1 ? 's' : ''}
+                                    </span>
+                                  </div>
+                                  <span className="text-xs font-mono text-muted-foreground shrink-0">
+                                    {version.updatedAt
+                                      ? new Date(version.updatedAt).toLocaleDateString('en-US', {
+                                          month: 'short', day: 'numeric', year: 'numeric',
+                                        })
+                                      : '—'}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+              {filtered.length === 0 && (
+                <div className="text-center py-12 text-muted-foreground">
+                  <p className="font-mono text-sm">No policies in this project yet</p>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="integration" className="mt-6">
+            {project && <IntegrationPanel project={project} />}
+          </TabsContent>
+        </Tabs>
       </div>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
