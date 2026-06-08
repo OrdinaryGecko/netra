@@ -93,6 +93,8 @@ export interface PolicySetSummary {
   name: string;
   environment: string;
   active: boolean;
+  enabled: boolean;
+  priority: number;
   description: string;
   policyVersions: PolicyVersionSummary[];
 }

@@ -40,6 +40,8 @@ module V1
           name: policy_set.name,
           environment: policy_set.environment,
           active: policy_set.active,
+          enabled: policy_set.enabled,
+          priority: policy_set.priority,
           policy_versions: policy_set.policy_versions
             .sort_by { |version| [version.updated_at || Time.at(0), version.created_at || Time.at(0)] }
             .reverse
@@ -63,7 +65,7 @@ module V1
       end
 
       def policy_set_params
-        params.require(:policy_set).permit(:name, :environment, :active)
+        params.require(:policy_set).permit(:name, :environment, :active, :enabled, :priority)
       end
     end
   end

@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { Plus, Search, FileText, ChevronRight, FolderKanban, ChevronDown, Plug, ListTree } from 'lucide-react';
+import { Plus, Search, FileText, ChevronRight, FolderKanban, ChevronDown, Plug, ListTree, Workflow } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { IntegrationPanel } from '@/components/IntegrationPanel';
+import { PipelinePanel } from '@/components/PipelinePanel';
 import { createPolicySet, fetchPolicySetsForProject } from '@/lib/api';
 
 export default function Policies() {
@@ -119,6 +120,10 @@ export default function Policies() {
               <ListTree className="h-3.5 w-3.5" />
               Policy Sets
             </TabsTrigger>
+            <TabsTrigger value="pipeline" className="gap-1.5">
+              <Workflow className="h-3.5 w-3.5" />
+              Pipeline
+            </TabsTrigger>
             <TabsTrigger value="integration" className="gap-1.5">
               <Plug className="h-3.5 w-3.5" />
               Integration
@@ -186,6 +191,12 @@ export default function Policies() {
                         </span>
                         <span>·</span>
                         <span>{latest.rulesCount || 0} rule{latest.rulesCount !== 1 ? 's' : ''}</span>
+                        {!policy.enabled && (
+                          <>
+                            <span>·</span>
+                            <span className="text-amber-600 dark:text-amber-400">Paused for project</span>
+                          </>
+                        )}
                       </div>
 
                       {sortedVersions.length > 1 && (
@@ -239,6 +250,10 @@ export default function Policies() {
                 </div>
               )}
             </div>
+          </TabsContent>
+
+          <TabsContent value="pipeline" className="mt-6">
+            {projectId && <PipelinePanel projectId={projectId} />}
           </TabsContent>
 
           <TabsContent value="integration" className="mt-6">

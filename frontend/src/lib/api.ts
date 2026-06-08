@@ -31,6 +31,8 @@ type BackendPolicySet = {
   name: string;
   environment: string;
   active: boolean;
+  enabled?: boolean;
+  priority?: number;
   policy_versions: Array<{
     id: number;
     version: string;
@@ -271,6 +273,8 @@ export async function fetchPolicySetsForProject(projectId: string): Promise<Poli
     name: policySet.name,
     environment: policySet.environment,
     active: policySet.active,
+    enabled: policySet.enabled ?? true,
+    priority: policySet.priority ?? 100,
     description: String(
       policySet.policy_versions?.[0]?.definition?.description ||
       `Policies for ${policySet.environment}`
@@ -388,6 +392,14 @@ export async function createPolicySet(params: { name: string; environment: strin
     policySetId: String(policySet.id),
     policyVersion: mapPolicyVersion(policyVersion),
   };
+}
+
+export async function togglePolicySetEnabled(policySetId: string, enabled: boolean, projectId?: string): Promise<void> {
+  await request(`/v1/admin/policy_sets/${policySetId}`, {
+    method: "PATCH",
+    projectId,
+    body: { policy_set: { enabled } },
+  });
 }
 
 export async function createRule(policyVersionId: string, rule: Omit<Rule, "id">, projectId?: string): Promise<Rule> {
