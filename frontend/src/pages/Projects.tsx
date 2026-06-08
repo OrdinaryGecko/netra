@@ -1,10 +1,24 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { AppHeader } from '@/components/AppHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FolderKanban, ChevronRight, Building2, Users, Plus } from 'lucide-react';
+import { FolderKanban, ChevronRight, Building2, Users, Plus, Loader2 } from 'lucide-react';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import { Project } from '@/lib/types';
+import { createProject } from '@/lib/api';
+import { toast } from 'sonner';
 
 const envColor: Record<string, string> = {
   production: 'bg-primary/10 text-primary border-primary/30',
@@ -14,7 +28,40 @@ const envColor: Record<string, string> = {
 
 export default function Projects() {
   const { organization, projects, membership } = useAuth();
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
+
+  const [createOpen, setCreateOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [environment, setEnvironment] = useState<Project['environment']>('development');
+
+  const reset = () => {
+    setName('');
+    setDescription('');
+    setEnvironment('development');
+  };
+
+  const createMutation = useMutation({
+    mutationFn: () => createProject({
+      name: name.trim(),
+      description: description.trim(),
+      environment,
+    }),
+    onSuccess: async (project) => {
+      await queryClient.invalidateQueries({ queryKey: ['projects'] });
+      reset();
+      setCreateOpen(false);
+      toast.success(`Project "${project.name}" created`);
+      navigate(`/projects/${project.id}/policies`);
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const handleCreate = () => {
+    if (!name.trim()) return;
+    createMutation.mutate();
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -38,7 +85,7 @@ export default function Projects() {
               </div>
             </div>
           </div>
-          <Button className="font-mono text-xs gap-1.5" disabled>
+          <Button onClick={() => setCreateOpen(true)} className="font-mono text-xs gap-1.5">
             <Plus className="h-3.5 w-3.5" />
             New Project
           </Button>
@@ -49,51 +96,152 @@ export default function Projects() {
             Projects ({projects.length})
           </h2>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            {projects.map((project) => (
-              <Card
-                key={project.id}
-                className="hover:border-primary/40 transition-colors cursor-pointer group"
-                onClick={() => navigate(`/projects/${project.id}/policies`)}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                        <FolderKanban className="h-4 w-4 text-primary" />
+          {projects.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                <FolderKanban className="h-8 w-8 text-muted-foreground mb-3" />
+                <p className="text-sm font-mono text-muted-foreground">No projects yet</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Create your first project to start managing guardrails.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCreateOpen(true)}
+                  className="mt-4 font-mono text-xs gap-1.5"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  New Project
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {projects.map((project) => (
+                <Card
+                  key={project.id}
+                  className="hover:border-primary/40 transition-colors cursor-pointer group"
+                  onClick={() => navigate(`/projects/${project.id}/policies`)}
+                >
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                          <FolderKanban className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="min-w-0">
+                          <CardTitle className="text-base font-mono truncate">{project.name}</CardTitle>
+                          <CardDescription className="text-xs mt-0.5 line-clamp-2">
+                            {project.description || "AI workload protected by Netra guardrails"}
+                          </CardDescription>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <CardTitle className="text-base font-mono truncate">{project.name}</CardTitle>
-                        <CardDescription className="text-xs mt-0.5 line-clamp-2">
-                          {project.description}
-                        </CardDescription>
-                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-1 shrink-0" />
                     </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-1 shrink-0" />
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
-                    <Badge variant="outline" className={`font-mono text-[10px] uppercase ${envColor[project.environment]}`}>
-                      {project.environment}
-                    </Badge>
-                    <span>·</span>
-                    <span>{project.policySetsCount} policy set{project.policySetsCount !== 1 ? 's' : ''}</span>
-                    <span>·</span>
-                    <span className="truncate">/{project.slug}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
+                      <Badge variant="outline" className={`font-mono text-[10px] uppercase ${envColor[project.environment]}`}>
+                        {project.environment}
+                      </Badge>
+                      <span>·</span>
+                      <span>{project.policySetsCount} policy set{project.policySetsCount !== 1 ? 's' : ''}</span>
+                      <span>·</span>
+                      <span className="truncate">/{project.slug}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="border-t pt-6 mt-8">
           <p className="text-xs font-mono text-muted-foreground">
-            Members, roles, and organization settings
+            Members, roles, and organization settings — coming soon.
           </p>
         </div>
       </div>
+
+      <Dialog
+        open={createOpen}
+        onOpenChange={(o) => {
+          setCreateOpen(o);
+          if (!o) {
+            reset();
+            createMutation.reset();
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-mono">New Project</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label className="font-mono text-xs uppercase tracking-wider">Name</Label>
+              <Input
+                placeholder="e.g. Marketing Copilot"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                className="font-mono text-sm"
+                disabled={createMutation.isPending}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="font-mono text-xs uppercase tracking-wider">Description</Label>
+              <Textarea
+                placeholder="What does this project do?"
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                className="font-mono text-sm resize-none"
+                rows={3}
+                disabled={createMutation.isPending}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="font-mono text-xs uppercase tracking-wider">Default Environment</Label>
+              <Select
+                value={environment}
+                onValueChange={(value) => setEnvironment(value as Project['environment'])}
+                disabled={createMutation.isPending}
+              >
+                <SelectTrigger className="font-mono text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="development" className="font-mono text-sm">Development</SelectItem>
+                  <SelectItem value="staging" className="font-mono text-sm">Staging</SelectItem>
+                  <SelectItem value="production" className="font-mono text-sm">Production</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {createMutation.isError && (
+              <p className="text-sm text-destructive font-mono">
+                {createMutation.error?.message || 'Failed to create project'}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setCreateOpen(false)}
+              className="font-mono text-xs"
+              disabled={createMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreate}
+              disabled={!name.trim() || createMutation.isPending}
+              className="font-mono text-xs gap-1.5"
+            >
+              {createMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {createMutation.isPending ? 'Creating...' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

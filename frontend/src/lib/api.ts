@@ -293,6 +293,40 @@ export async function fetchProjects(): Promise<Project[]> {
   return payload.map(mapProject);
 }
 
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+export async function createProject(params: {
+  name: string;
+  description: string;
+  environment: "production" | "staging" | "development";
+  projectId?: string;
+}): Promise<Project> {
+  const baseKey = slugify(params.name) || `project-${Date.now()}`;
+  const payload = await request<BackendProject>("/v1/admin/projects", {
+    method: "POST",
+    projectId: params.projectId,
+    body: {
+      project: {
+        name: params.name,
+        key: baseKey,
+        default_environment: params.environment,
+        fail_mode: "open",
+        active: true,
+        upstream_provider: "stub",
+        upstream_base_url: null,
+        encrypted_upstream_key: null,
+      },
+    },
+  });
+  return mapProject(payload);
+}
+
 export async function fetchPolicyVersion(policyVersionId: string, projectId?: string): Promise<PolicyVersion> {
   const payload = await request<BackendPolicyVersion>(`/v1/admin/policy_versions/${policyVersionId}`, { projectId });
   return mapPolicyVersion(payload);
