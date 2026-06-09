@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { AppHeader } from '@/components/AppHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,8 +27,7 @@ const envColor: Record<string, string> = {
 };
 
 export default function Projects() {
-  const { organization, projects, membership } = useAuth();
-  const queryClient = useQueryClient();
+  const { organization, projects, membership, refreshProjects } = useAuth();
   const navigate = useNavigate();
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -49,7 +48,7 @@ export default function Projects() {
       environment,
     }),
     onSuccess: async (project) => {
-      await queryClient.invalidateQueries({ queryKey: ['projects'] });
+      await refreshProjects();
       reset();
       setCreateOpen(false);
       toast.success(`Project "${project.name}" created`);

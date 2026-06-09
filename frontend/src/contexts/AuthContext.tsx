@@ -13,6 +13,7 @@ interface AuthContextType {
   projects: Project[];
   signIn: (key: string) => Promise<void>;
   signOut: () => Promise<void>;
+  refreshProjects: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -62,6 +63,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsAuthenticated(false);
   }, []);
 
+  const refreshProjects = useCallback(async () => {
+    setProjects(await fetchProjects());
+  }, []);
+
   const organization = session?.organization || session?.project?.organization || null;
   const user = session?.user || null;
   const membership = session?.membership || null;
@@ -79,8 +84,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       projects,
       signIn,
       signOut,
+      refreshProjects,
     }),
-    [apiKey, isAuthenticated, isLoading, session, user, organization, membership, projects, signIn, signOut]
+    [apiKey, isAuthenticated, isLoading, session, user, organization, membership, projects, signIn, signOut, refreshProjects]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
