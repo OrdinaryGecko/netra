@@ -15,19 +15,6 @@ interface RuleEditorDialogProps {
   readOnly?: boolean;
 }
 
-const defaultRule: Omit<Rule, 'id'> = {
-  name: '',
-  kind: 'max_message_chars',
-  stage: 'input',
-  action: 'block',
-  priority: 1,
-  enabled: true,
-  config: {
-    max: 4000,
-    scope: 'latest_user_message',
-  },
-};
-
 const ruleTemplates: Record<RuleKind, {
   name: string;
   stage: RuleStage;
@@ -35,7 +22,7 @@ const ruleTemplates: Record<RuleKind, {
   config: Record<string, unknown>;
 }> = {
   max_message_chars: {
-    name: 'limit-input-length',
+    name: 'Input length limit',
     stage: 'input',
     action: 'block',
     config: {
@@ -44,7 +31,7 @@ const ruleTemplates: Record<RuleKind, {
     },
   },
   keyword_blocklist: {
-    name: 'block-prompt-injection-keywords',
+    name: 'Keyword blocklist',
     stage: 'input',
     action: 'block',
     config: {
@@ -56,16 +43,29 @@ const ruleTemplates: Record<RuleKind, {
     },
   },
   pii_detector: {
-    name: 'mask-pii-in-output',
+    name: 'PII detector',
     stage: 'output',
     action: 'mask',
     config: {},
   },
   json_format: {
-    name: 'require-json-output',
+    name: 'JSON format validator',
     stage: 'output',
     action: 'block',
     config: {},
+  },
+};
+
+const defaultRule: Omit<Rule, 'id'> = {
+  name: ruleTemplates.max_message_chars.name,
+  kind: 'max_message_chars',
+  stage: 'input',
+  action: 'block',
+  priority: 1,
+  enabled: true,
+  config: {
+    max: 4000,
+    scope: 'latest_user_message',
   },
 };
 
@@ -103,11 +103,13 @@ export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false
 
   const handleKindChange = (kind: RuleKind) => {
     const template = ruleTemplates[kind];
+    const previousTemplate = ruleTemplates[form.kind as RuleKind];
+    const nameIsDefault = !form.name || form.name === previousTemplate?.name;
 
     setForm((currentForm) => ({
       ...currentForm,
       kind,
-      name: currentForm.name || template.name,
+      name: nameIsDefault ? template.name : currentForm.name,
       stage: template.stage,
       action: template.action,
       config: template.config,
