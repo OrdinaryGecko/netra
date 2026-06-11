@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { Plus, Search, FileText, ChevronRight, FolderKanban, ChevronDown, Plug, ListTree, Workflow } from 'lucide-react';
+import { Plus, Search, FileText, ChevronRight, FolderKanban, ChevronDown, Plug, ListTree, Workflow, FlaskConical } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { IntegrationPanel } from '@/components/IntegrationPanel';
 import { PipelinePanel } from '@/components/PipelinePanel';
+import { ProjectDryRunPanel } from '@/components/ProjectDryRunPanel';
 import { createPolicySet, fetchPolicySetsForProject } from '@/lib/api';
 
 export default function Policies() {
@@ -123,6 +124,10 @@ export default function Policies() {
             <TabsTrigger value="pipeline" className="gap-1.5">
               <Workflow className="h-3.5 w-3.5" />
               Pipeline
+            </TabsTrigger>
+            <TabsTrigger value="dryrun" className="gap-1.5">
+              <FlaskConical className="h-3.5 w-3.5" />
+              Dry Run
             </TabsTrigger>
             <TabsTrigger value="integration" className="gap-1.5">
               <Plug className="h-3.5 w-3.5" />
@@ -254,6 +259,10 @@ export default function Policies() {
 
           <TabsContent value="pipeline" className="mt-6">
             {projectId && <PipelinePanel projectId={projectId} />}
+          </TabsContent>
+
+          <TabsContent value="dryrun" className="mt-6">
+            {projectId && <ProjectDryRunPanel projectId={projectId} />}
           </TabsContent>
 
           <TabsContent value="integration" className="mt-6">

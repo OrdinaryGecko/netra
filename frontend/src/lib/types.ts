@@ -110,6 +110,7 @@ export interface DryRunEvaluation {
   stage?: RuleStage;
   detail?: string;
   details?: Record<string, unknown>;
+  policySetName?: string;
 }
 
 export interface DryRunResult {

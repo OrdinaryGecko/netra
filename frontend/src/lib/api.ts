@@ -477,3 +477,36 @@ export async function dryRunPolicyVersion(policyVersionId: string, content: stri
     evaluations: payload.evaluations || [],
   };
 }
+
+export async function dryRunProject(projectId: string, content: string): Promise<DryRunResult> {
+  const payload = await request<{
+    status: "allowed" | "blocked";
+    action: Rule["action"];
+    reasons: string[];
+    trace_id: string;
+    provider_response: Record<string, unknown> | null;
+    evaluations: DryRunResult["evaluations"];
+  }>(`/v1/admin/projects/${projectId}/dry_run`, {
+    method: "POST",
+    projectId,
+    body: {
+      provider: "stub",
+      model: "stub-v1",
+      messages: [
+        {
+          role: "user",
+          content,
+        },
+      ],
+    },
+  });
+
+  return {
+    status: payload.status,
+    action: payload.action,
+    reasons: payload.reasons || [],
+    traceId: payload.trace_id,
+    providerResponse: payload.provider_response,
+    evaluations: payload.evaluations || [],
+  };
+}

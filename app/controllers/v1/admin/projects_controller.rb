@@ -38,6 +38,25 @@ module V1
         end
       end
 
+      def dry_run
+        project = current_organization.projects.find(params[:id])
+        client_application = project.client_applications.first
+        environment = project.default_environment
+
+        result = Guardrails::PolicyVersionTester.call_for_project(
+          project:,
+          client_application:,
+          environment:,
+          request_payload: test_params.to_h.deep_symbolize_keys
+        )
+
+        render json: result.as_json, status: :ok
+      rescue Guardrails::ValidationError => e
+        render_error("invalid_request", status: :unprocessable_entity, details: e.errors)
+      rescue ActiveRecord::RecordInvalid => e
+        render_error("invalid_project", status: :unprocessable_entity, details: e.record.errors.full_messages)
+      end
+
       private
 
       def serialize_project(project)
@@ -79,6 +98,16 @@ module V1
           default_environment: project.default_environment,
           active: project.active,
           updated_at: Time.current
+        )
+      end
+
+      def test_params
+        params.permit(
+          :provider,
+          :model,
+          :execute_provider,
+          options: {},
+          messages: %i[role content]
         )
       end
     end

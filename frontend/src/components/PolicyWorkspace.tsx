@@ -13,9 +13,7 @@ import {
 import { VersionHeader } from './VersionHeader';
 import { RulesTable } from './RulesTable';
 import { RuleEditorDialog } from './RuleEditorDialog';
-import { DryRunPanel } from './DryRunPanel';
 import { toast } from 'sonner';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 
 export function PolicyWorkspace() {
@@ -153,25 +151,16 @@ export function PolicyWorkspace() {
     <div className="min-h-screen bg-background">
       <VersionHeader version={version} onPublish={handlePublish} onClone={handleClone} />
       <div className="max-w-5xl mx-auto px-6 py-6">
-        <Tabs defaultValue="rules" className="space-y-6">
-          <TabsList className="bg-muted">
-            <TabsTrigger value="rules" className="font-mono text-xs">Rules</TabsTrigger>
-            <TabsTrigger value="dryrun" className="font-mono text-xs">Dry Run</TabsTrigger>
-          </TabsList>
-          <TabsContent value="rules">
-            <RulesTable
-              rules={version.rules}
-              isDraft={isDraft}
-              onToggle={handleToggleRule}
-              onEdit={handleEditRule}
-              onDelete={handleDeleteRule}
-              onAdd={handleAddRule}
-            />
-          </TabsContent>
-          <TabsContent value="dryrun">
-            <DryRunPanel policyVersionId={version.id} projectId={projectId} />
-          </TabsContent>
-        </Tabs>
+        <div className="space-y-6">
+          <RulesTable
+            rules={version.rules}
+            isDraft={isDraft}
+            onToggle={handleToggleRule}
+            onEdit={handleEditRule}
+            onDelete={handleDeleteRule}
+            onAdd={handleAddRule}
+          />
+        </div>
       </div>
       <RuleEditorDialog
         open={editorOpen}

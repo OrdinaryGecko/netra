@@ -7,8 +7,15 @@ module Guardrails
       new(policy_version:, request_payload:).call
     end
 
-    def initialize(policy_version:, request_payload:)
+    def self.call_for_project(project:, client_application:, environment:, request_payload:)
+      new(project:, client_application:, environment:, request_payload:).call_for_project
+    end
+
+    def initialize(policy_version: nil, project: nil, client_application: nil, environment: nil, request_payload:)
       @policy_version = policy_version
+      @project = project
+      @client_application = client_application
+      @environment = environment
       @request_payload = request_payload
     end
 
@@ -61,6 +68,72 @@ module Guardrails
       )
     end
 
+    def call_for_project
+      RequestValidator.call!(normalized_payload)
+
+      resolved_sets = PolicyResolver.call!(
+        client_application: @client_application,
+        project: @project,
+        environment: @environment
+      )
+
+      policy_versions = resolved_sets.map { |rs| rs[:policy_version] }
+      rules_with_sets = composed_rules(resolved_sets)
+
+      input_rules_with_sets = rules_with_sets.select { |_, rule| rule.stage == "input" }
+      output_rules_with_sets = rules_with_sets.select { |_, rule| rule.stage == "output" }
+
+      input_rules = input_rules_with_sets.map(&:last)
+      output_rules = output_rules_with_sets.map(&:last)
+
+      input_decision = Evaluator.call(
+        rules: input_rules,
+        content: combined_input,
+        options: options,
+        messages: messages
+      )
+
+      if input_decision[:blocked]
+        return dry_run_result_for_project(
+          policy_versions:,
+          status: "blocked",
+          action: "block",
+          reasons: input_decision[:reasons],
+          provider_response: nil,
+          evaluations: format_evaluations(input_decision[:evaluations], input_rules_with_sets)
+        )
+      end
+
+      provider_response = execute_provider? ? provider.complete(messages: messages) : simulated_provider_response
+
+      output_decision = Evaluator.call(
+        rules: output_rules,
+        content: provider_response[:content],
+        options: options,
+        provider_response:
+      )
+
+      action = if output_decision[:blocked]
+        "block"
+      elsif output_decision[:masked]
+        "mask"
+      else
+        "allow"
+      end
+
+      status = output_decision[:blocked] ? "blocked" : "allowed"
+      final_response = output_decision[:masked] ? provider_response.merge(content: Masker.mask(provider_response[:content])) : provider_response
+
+      dry_run_result_for_project(
+        policy_versions:,
+        status:,
+        action:,
+        reasons: input_decision[:reasons] + output_decision[:reasons],
+        provider_response: output_decision[:blocked] ? nil : final_response,
+        evaluations: format_evaluations(input_decision[:evaluations] + output_decision[:evaluations], rules_with_sets)
+      )
+    end
+
     private
 
     def dry_run_result(status:, action:, reasons:, provider_response:, evaluations:)
@@ -77,12 +150,41 @@ module Guardrails
       )
     end
 
-    def format_evaluations(evaluations)
+    def dry_run_result_for_project(policy_versions:, status:, action:, reasons:, provider_response:, evaluations:)
+      Result.new(
+        status:,
+        action:,
+        reasons:,
+        trace_id: SecureRandom.uuid,
+        policy_versions: policy_versions.map(&:version),
+        provider_response:,
+        messages: messages,
+        evaluations: evaluations,
+        dry_run: true
+      )
+    end
+
+    def composed_rules(resolved_sets)
+      resolved_sets.flat_map do |rs|
+        rs[:policy_version].rules.enabled.map { |rule| [rs[:policy_set], rule] }
+      end
+        .sort_by { |set, rule| [set.priority, rule.priority] }
+    end
+
+    def format_evaluations(evaluations, rules_with_sets = nil)
       evaluations.map do |evaluation|
-        evaluation.merge(
+        formatted = evaluation.merge(
           triggered: evaluation[:outcome] == "matched",
           detail: evaluation_detail(evaluation)
         )
+        
+        if rules_with_sets
+          rule_id = evaluation[:rule_id]
+          matching_rule = rules_with_sets.find { |_, rule| rule.id == rule_id }
+          formatted[:policySetName] = matching_rule[0].name if matching_rule
+        end
+        
+        formatted
       end
     end
 
@@ -159,7 +261,7 @@ module Guardrails
 
     def normalized_payload
       @normalized_payload ||= {
-        environment: @request_payload[:environment] || @policy_version.policy_set.environment,
+        environment: @request_payload[:environment] || (@policy_version ? @policy_version.policy_set.environment : @environment),
         provider: @request_payload[:provider].presence || DEFAULT_PROVIDER,
         model: @request_payload[:model].presence || DEFAULT_MODEL,
         options: @request_payload[:options] || {},

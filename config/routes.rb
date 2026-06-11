@@ -20,7 +20,9 @@ Rails.application.routes.draw do
 
     namespace :admin do
       resource :session, only: %i[show create destroy]
-      resources :projects, only: %i[index create show update]
+      resources :projects, only: %i[index create show update] do
+        post :dry_run, on: :member
+      end
       resources :policy_sets, only: %i[index create show update]
       resources :policy_versions, only: %i[create update show] do
         post :publish, on: :member
