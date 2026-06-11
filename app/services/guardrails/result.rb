@@ -1,14 +1,14 @@
 module Guardrails
   class Result
-    attr_reader :status, :action, :reasons, :trace_id, :policy_version,
+    attr_reader :status, :action, :reasons, :trace_id, :policy_versions,
       :provider_response, :messages, :evaluations, :dry_run
 
-    def initialize(status:, action:, reasons:, trace_id:, policy_version:, provider_response:, messages:, evaluations: nil, dry_run: false)
+    def initialize(status:, action:, reasons:, trace_id:, policy_versions:, provider_response:, messages:, evaluations: nil, dry_run: false)
       @status = status
       @action = action
       @reasons = reasons
       @trace_id = trace_id
-      @policy_version = policy_version
+      @policy_versions = policy_versions
       @provider_response = provider_response
       @messages = messages
       @evaluations = evaluations
@@ -25,7 +25,7 @@ module Guardrails
         action:,
         reasons:,
         trace_id:,
-        policy_version:,
+        policy_versions:,
         messages:,
         provider_response:,
         dry_run:

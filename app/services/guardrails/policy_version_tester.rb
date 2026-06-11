@@ -69,7 +69,7 @@ module Guardrails
         action:,
         reasons:,
         trace_id: SecureRandom.uuid,
-        policy_version: @policy_version.version,
+        policy_versions: [@policy_version.version],
         provider_response:,
         messages: messages,
         evaluations: format_evaluations(evaluations),

@@ -19,7 +19,7 @@ module V1
       )
 
       response.headers["X-Netra-Trace-Id"] = result.trace_id
-      response.headers["X-Netra-Policy-Version"] = result.policy_version.to_s
+      response.headers["X-Netra-Policy-Version"] = result.policy_versions.join(", ")
       response.headers["X-Netra-Action"] = result.action.to_s
 
       if result.status == "blocked"

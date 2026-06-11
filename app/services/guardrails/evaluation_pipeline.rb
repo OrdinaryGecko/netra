@@ -15,22 +15,25 @@ module Guardrails
 
     def call
       RequestValidator.call!(@request_payload)
-      policy_version = PolicyResolver.call!(
+
+      resolved_sets = PolicyResolver.call!(
         client_application: @client_application,
         project: @project,
         environment: environment
       )
 
-      request_record = build_request!(policy_version:)
-      input_decision = evaluate_stage!(
-        rules: policy_version.rules.enabled.where(stage: "input"),
-        content: combined_input,
-        messages: request_messages
-      )
+      policy_versions = resolved_sets.map { |rs| rs[:policy_version] }
+      all_rules = composed_rules(resolved_sets)
+
+      input_rules = all_rules.select { |r| r.stage == "input" }
+      output_rules = all_rules.select { |r| r.stage == "output" }
+
+      request_record = build_request!(policy_versions:)
+      input_decision = evaluate_stage!(rules: input_rules, content: combined_input, messages: request_messages)
       persist_evaluations!(request_record:, evaluations: input_decision[:evaluations])
 
       if input_decision[:blocked]
-        finalize_block!(request_record:, policy_version:, reasons: input_decision[:reasons])
+        finalize_block!(request_record:, policy_versions:, reasons: input_decision[:reasons])
       else
         provider_response = Providers::Factory.build(
           provider: @request_payload[:provider],
@@ -39,24 +42,20 @@ module Guardrails
         ).complete(messages: request_messages)
 
         output_text = provider_response[:content]
-        output_decision = evaluate_stage!(
-          rules: policy_version.rules.enabled.where(stage: "output"),
-          content: output_text,
-          provider_response:
-        )
+        output_decision = evaluate_stage!(rules: output_rules, content: output_text, provider_response:)
         persist_evaluations!(request_record:, evaluations: output_decision[:evaluations])
 
         if output_decision[:blocked]
           request_record.update!(response_payload: provider_response)
           finalize_block!(
             request_record:,
-            policy_version:,
+            policy_versions:,
             reasons: input_decision[:reasons] + output_decision[:reasons]
           )
         else
           finalize_success!(
             request_record:,
-            policy_version:,
+            policy_versions:,
             provider_response: masked_response(provider_response, output_text, output_decision[:masked]),
             reasons: input_decision[:reasons] + output_decision[:reasons],
             masked: output_decision[:masked]
@@ -67,7 +66,15 @@ module Guardrails
 
     private
 
-    def build_request!(policy_version:)
+    def composed_rules(resolved_sets)
+      resolved_sets.flat_map do |rs|
+        rs[:policy_version].rules.enabled.map { |rule| [rs[:policy_set], rule] }
+      end
+        .sort_by { |set, rule| [set.priority, rule.priority] }
+        .map(&:last)
+    end
+
+    def build_request!(policy_versions:)
       GuardrailRequest.create!(
         client_application: @client_application,
         project: @project,
@@ -86,7 +93,7 @@ module Guardrails
           metadata: @request_payload[:metadata]
         },
         decision: {
-          policy_version: policy_version.version
+          policy_versions: policy_versions.map { |pv| { id: pv.id, version: pv.version } }
         },
         occurred_at: Time.current
       )
@@ -108,13 +115,13 @@ module Guardrails
       end
     end
 
-    def finalize_block!(request_record:, policy_version:, reasons:)
+    def finalize_block!(request_record:, policy_versions:, reasons:)
       request_record.update!(
         status: "blocked",
         decision: {
           action: "block",
           reasons:,
-          policy_version: policy_version.version
+          policy_versions: policy_versions.map { |pv| { id: pv.id, version: pv.version } }
         }
       )
 
@@ -123,13 +130,13 @@ module Guardrails
         action: "block",
         reasons:,
         trace_id: @trace_id,
-        policy_version: policy_version.version,
+        policy_versions: policy_versions.map(&:version),
         provider_response: nil,
         messages: request_messages
       )
     end
 
-    def finalize_success!(request_record:, policy_version:, provider_response:, reasons:, masked:)
+    def finalize_success!(request_record:, policy_versions:, provider_response:, reasons:, masked:)
       action = masked ? "mask" : "allow"
       status = "allowed"
       final_response = provider_response.dup
@@ -140,7 +147,7 @@ module Guardrails
         decision: {
           action:,
           reasons:,
-          policy_version: policy_version.version
+          policy_versions: policy_versions.map { |pv| { id: pv.id, version: pv.version } }
         }
       )
 
@@ -149,7 +156,7 @@ module Guardrails
         action:,
         reasons:,
         trace_id: @trace_id,
-        policy_version: policy_version.version,
+        policy_versions: policy_versions.map(&:version),
         provider_response: final_response,
         messages: request_messages
       )
