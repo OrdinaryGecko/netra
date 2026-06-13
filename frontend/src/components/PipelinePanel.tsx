@@ -1,9 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { StatusBadge } from '@/components/StatusBadge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowDown, ArrowRight, Workflow, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { PolicySetSummary, PolicyVersionSummary, RuleAction } from '@/lib/types';
 import { fetchPolicySetsForProject, togglePolicySetEnabled } from '@/lib/api';
@@ -38,10 +39,11 @@ function flattenRules(
 
 export function PipelinePanel({ projectId }: PipelinePanelProps) {
   const queryClient = useQueryClient();
+  const [environment, setEnvironment] = useState('development');
 
   const policySetsQuery = useQuery({
-    queryKey: ['policy-sets', projectId],
-    queryFn: () => fetchPolicySetsForProject(projectId),
+    queryKey: ['policy-sets', projectId, environment],
+    queryFn: () => fetchPolicySetsForProject(projectId, environment),
     enabled: Boolean(projectId),
   });
 
@@ -72,26 +74,47 @@ export function PipelinePanel({ projectId }: PipelinePanelProps) {
 
   if (policySetsQuery.isLoading) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center text-muted-foreground font-mono text-sm">
-          Loading pipeline...
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (steps.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center text-muted-foreground font-mono text-sm">
-          No active policy versions for this project yet. Publish a draft to start composing the pipeline.
-        </CardContent>
-      </Card>
+      <div className="space-y-4">
+        <Select value={environment} onValueChange={setEnvironment}>
+          <SelectTrigger className="w-[160px] font-mono text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="development" className="font-mono text-xs">Development</SelectItem>
+            <SelectItem value="staging" className="font-mono text-xs">Staging</SelectItem>
+            <SelectItem value="production" className="font-mono text-xs">Production</SelectItem>
+          </SelectContent>
+        </Select>
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground font-mono text-sm">
+            Loading pipeline...
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      <Select value={environment} onValueChange={setEnvironment}>
+        <SelectTrigger className="w-[160px] font-mono text-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="development" className="font-mono text-xs">Development</SelectItem>
+          <SelectItem value="staging" className="font-mono text-xs">Staging</SelectItem>
+          <SelectItem value="production" className="font-mono text-xs">Production</SelectItem>
+        </SelectContent>
+      </Select>
+
+      {steps.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground font-mono text-sm">
+            No active policy sets for the <span className="font-semibold">{environment}</span> environment.
+          </CardContent>
+        </Card>
+      ) : (
+      <>
       <Card>
         <CardHeader>
           <div className="flex items-start gap-3">
@@ -101,8 +124,7 @@ export function PipelinePanel({ projectId }: PipelinePanelProps) {
             <div>
               <CardTitle className="text-base font-mono">Runtime pipeline</CardTitle>
               <CardDescription className="text-xs mt-0.5">
-                Every request that authenticates as this project runs through these policy sets in order.
-                Sets are sorted by priority (lower runs first).
+                Policy sets applied to requests in the {environment} environment, sorted by priority.
               </CardDescription>
             </div>
           </div>
@@ -213,6 +235,8 @@ export function PipelinePanel({ projectId }: PipelinePanelProps) {
           )}
         </CardContent>
       </Card>
+      </>
+      )}
     </div>
   );
 }

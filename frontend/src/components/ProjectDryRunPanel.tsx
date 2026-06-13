@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Play, CheckCircle2, XCircle, AlertTriangle, Info, ShieldCheck, ShieldAlert, FlaskConical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -51,10 +52,11 @@ export function ProjectDryRunPanel({ projectId }: ProjectDryRunPanelProps) {
   const project = useCurrentProject(projectId);
   const [payload, setPayload] = useState('Hello, my email is john@example.com and my phone is 555-123-4567.');
   const [result, setResult] = useState<DryRunResult | null>(null);
+  const [environment, setEnvironment] = useState('development');
 
   const policySetsQuery = useQuery({
-    queryKey: ['policy-sets', projectId],
-    queryFn: () => fetchPolicySetsForProject(projectId),
+    queryKey: ['policy-sets', projectId, environment],
+    queryFn: () => fetchPolicySetsForProject(projectId, environment),
   });
 
   const enabledSets = useMemo(
@@ -66,7 +68,7 @@ export function ProjectDryRunPanel({ projectId }: ProjectDryRunPanelProps) {
   );
 
   const dryRunMutation = useMutation({
-    mutationFn: () => dryRunProject(projectId, payload),
+    mutationFn: () => dryRunProject(projectId, payload, environment),
     onSuccess: (nextResult) => setResult(nextResult),
     onError: (error: Error) => toast.error(error.message),
   });
@@ -82,16 +84,38 @@ export function ProjectDryRunPanel({ projectId }: ProjectDryRunPanelProps) {
 
   if (enabledSets.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center text-muted-foreground font-mono text-sm">
-          No active, enabled policy sets for this project. Publish a draft and enable the set to dry-run the pipeline.
-        </CardContent>
-      </Card>
+      <div className="space-y-4">
+        <Select value={environment} onValueChange={setEnvironment}>
+          <SelectTrigger className="w-[160px] font-mono text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="development" className="font-mono text-xs">Development</SelectItem>
+            <SelectItem value="staging" className="font-mono text-xs">Staging</SelectItem>
+            <SelectItem value="production" className="font-mono text-xs">Production</SelectItem>
+          </SelectContent>
+        </Select>
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground font-mono text-sm">
+            No active, enabled policy sets for the <span className="font-semibold">{environment}</span> environment.
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      <Select value={environment} onValueChange={setEnvironment}>
+        <SelectTrigger className="w-[160px] font-mono text-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="development" className="font-mono text-xs">Development</SelectItem>
+          <SelectItem value="staging" className="font-mono text-xs">Staging</SelectItem>
+          <SelectItem value="production" className="font-mono text-xs">Production</SelectItem>
+        </SelectContent>
+      </Select>
       <Card>
         <CardHeader>
           <div className="flex items-start gap-3">

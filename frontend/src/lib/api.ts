@@ -466,7 +466,7 @@ export async function dryRunPolicyVersion(policyVersionId: string, content: stri
   };
 }
 
-export async function dryRunProject(projectId: string, content: string): Promise<DryRunResult> {
+export async function dryRunProject(projectId: string, content: string, environment?: string): Promise<DryRunResult> {
   const payload = await request<{
     status: "allowed" | "blocked";
     action: Rule["action"];
@@ -478,6 +478,7 @@ export async function dryRunProject(projectId: string, content: string): Promise
     method: "POST",
     projectId,
     body: {
+      environment,
       provider: "stub",
       model: "stub-v1",
       messages: [
