@@ -143,7 +143,7 @@ function mapPolicyVersion(policyVersion: BackendPolicyVersion): PolicyVersion {
     status: policyVersion.status,
     createdAt: policyVersion.created_at,
     updatedAt: policyVersion.updated_at,
-    description: String(policyVersion.definition?.description || "Guardrail policy version"),
+    description: String(policyVersion.definition?.description || `Policy for ${policyVersion.policy_set_environment}`),
     rules: (policyVersion.rules || []).map(mapRule),
   };
 }
@@ -240,7 +240,7 @@ export async function fetchPolicySets(): Promise<PolicySetSummary[]> {
     active: policySet.active,
     description: String(
       policySet.policy_versions?.[0]?.definition?.description ||
-      `Policies for ${policySet.environment}`
+      `Policy for ${policySet.environment}`
     ),
     policyVersions: (policySet.policy_versions || []).map((version) => ({
       id: String(version.id),
@@ -267,7 +267,7 @@ export async function fetchPolicySetsForProject(projectId: string, environment?:
     priority: policySet.priority ?? 100,
     description: String(
       policySet.policy_versions?.[0]?.definition?.description ||
-      `Policies for ${policySet.environment}`
+      `Policy for ${policySet.environment}`
     ),
     policyVersions: (policySet.policy_versions || []).map((version) => ({
       id: String(version.id),
