@@ -7,7 +7,7 @@ class AdminWebFlowTest < ActionDispatch::IntegrationTest
     @policy_version = @policy_set.policy_versions.create!(version: "1", status: "draft", definition: { "description" => "Draft version" })
     @policy_version.rules.create!(
       name: "block-injection",
-      kind: "keyword_blocklist",
+      kind: "keyword_detector",
       stage: "input",
       action: "block",
       priority: 10,
@@ -37,7 +37,7 @@ class AdminWebFlowTest < ActionDispatch::IntegrationTest
       params: {
         rule: {
           name: "block-injection",
-          kind: "keyword_blocklist",
+          kind: "keyword_detector",
           stage: "input",
           action: "block",
           priority: 15,

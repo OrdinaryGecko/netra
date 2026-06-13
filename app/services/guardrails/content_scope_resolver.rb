@@ -2,7 +2,7 @@ module Guardrails
   class ContentScopeResolver
     DEFAULT_SCOPE_BY_RULE_KIND = {
       "max_message_chars" => "latest_user_message",
-      "keyword_blocklist" => "latest_user_message",
+      "keyword_detector" => "latest_user_message",
       "pii_detector" => "latest_user_message"
     }.freeze
 

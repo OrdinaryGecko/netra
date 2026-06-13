@@ -44,7 +44,7 @@ rules = [
   },
   {
     name: "prompt-injection-keywords",
-    kind: "keyword_blocklist",
+    kind: "keyword_detector",
     stage: "input",
     action: "block",
     priority: 20,

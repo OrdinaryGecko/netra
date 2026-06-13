@@ -1,5 +1,5 @@
 export type VersionStatus = "draft" | "active" | "archived";
-export type RuleKind = "max_message_chars" | "keyword_blocklist" | "pii_detector" | "json_format";
+export type RuleKind = "max_message_chars" | "keyword_detector" | "pii_detector" | "json_format";
 export type RuleStage = "input" | "output";
 export type RuleAction = "allow" | "block" | "mask" | "log_only";
 export type RuleScope = "latest_user_message" | "latest_message" | "all_user_messages" | "system_messages" | "recent_messages" | "full_conversation";

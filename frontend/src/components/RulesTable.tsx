@@ -16,7 +16,7 @@ interface RulesTableProps {
 
 const kindLabels: Record<string, string> = {
   max_message_chars: 'Max Chars',
-  keyword_blocklist: 'Keyword Block',
+  keyword_detector: 'Keyword Detect',
   pii_detector: 'PII Detector',
   json_format: 'JSON Format',
 };

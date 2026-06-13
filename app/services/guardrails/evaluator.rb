@@ -16,6 +16,8 @@ module Guardrails
       reasons = []
       masked = false
       blocked = false
+      mask_keywords = []
+      mask_replacement = "[REDACTED]"
       evaluations = []
 
       @rules.each do |rule|
@@ -27,7 +29,13 @@ module Guardrails
         if outcome == "matched"
           reasons << rule.name
           blocked ||= rule.action == "block"
-          masked ||= rule.action == "mask"
+          if rule.action == "mask"
+            masked = true
+            if rule.kind == "keyword_detector"
+              mask_keywords.concat(Array(details[:keywords]))
+              mask_replacement = rule.config&.fetch("replacement", nil).presence || "[REDACTED]"
+            end
+          end
         end
 
         evaluations << {
@@ -47,6 +55,8 @@ module Guardrails
       {
         blocked:,
         masked:,
+        mask_keywords: mask_keywords.uniq,
+        mask_replacement:,
         reasons:,
         evaluations:
       }

@@ -16,7 +16,7 @@ module Guardrails
       when "max_message_chars"
         max = @config.fetch("max", 4_000)
         @content.length > max ? matched(length: @content.length, max:) : clean(length: @content.length, max:)
-      when "keyword_blocklist"
+      when "keyword_detector"
         keywords = Array(@config["keywords"]).map(&:downcase)
         found = keywords.select { |keyword| @content.downcase.include?(keyword) }
         found.any? ? matched(keywords: found) : clean(keyword_count: keywords.size)

@@ -35,11 +35,17 @@ module Guardrails
       if input_decision[:blocked]
         finalize_block!(request_record:, policy_versions:, reasons: input_decision[:reasons])
       else
+        forwarded_messages = if input_decision[:masked]
+          mask_messages(request_messages, input_decision[:mask_keywords], input_decision[:mask_replacement])
+        else
+          request_messages
+        end
+
         provider_response = Providers::Factory.build(
           provider: @request_payload[:provider],
           model: @request_payload[:model],
           options: @request_payload[:options] || {}
-        ).complete(messages: request_messages)
+        ).complete(messages: forwarded_messages)
 
         output_text = provider_response[:content]
         output_decision = evaluate_stage!(rules: output_rules, content: output_text, provider_response:)
@@ -56,7 +62,7 @@ module Guardrails
           finalize_success!(
             request_record:,
             policy_versions:,
-            provider_response: masked_response(provider_response, output_text, output_decision[:masked]),
+            provider_response: masked_response(provider_response, output_text, output_decision[:masked], mask_keywords: output_decision[:mask_keywords], mask_replacement: output_decision[:mask_replacement]),
             reasons: input_decision[:reasons] + output_decision[:reasons],
             masked: output_decision[:masked]
           )
@@ -179,10 +185,16 @@ module Guardrails
       provider_configs.find_by(provider: @request_payload[:provider], active: true)
     end
 
-    def masked_response(provider_response, output_text, masked)
+    def masked_response(provider_response, output_text, masked, mask_keywords: [], mask_replacement: "[REDACTED]")
       return provider_response unless masked
 
-      provider_response.merge(content: Masker.mask(output_text))
+      provider_response.merge(content: Masker.mask(output_text, keywords: mask_keywords, replacement: mask_replacement))
+    end
+
+    def mask_messages(messages, keywords, replacement = "[REDACTED]")
+      messages.map do |msg|
+        msg.merge(content: Masker.mask(msg[:content].to_s, keywords: keywords, replacement: replacement))
+      end
     end
   end
 end

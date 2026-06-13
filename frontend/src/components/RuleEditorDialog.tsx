@@ -30,8 +30,8 @@ const ruleTemplates: Record<RuleKind, {
       scope: 'latest_user_message',
     },
   },
-  keyword_blocklist: {
-    name: 'Keyword blocklist',
+  keyword_detector: {
+    name: 'Keyword detector',
     stage: 'input',
     action: 'block',
     config: {
@@ -54,6 +54,13 @@ const ruleTemplates: Record<RuleKind, {
     action: 'block',
     config: {},
   },
+};
+
+const ALLOWED_ACTIONS_BY_KIND: Record<RuleKind, RuleAction[]> = {
+  max_message_chars: ['block', 'allow', 'log_only'],
+  keyword_detector: ['block', 'mask', 'allow', 'log_only'],
+  pii_detector: ['block', 'mask', 'allow', 'log_only'],
+  json_format: ['block', 'allow', 'log_only'],
 };
 
 const defaultRule: Omit<Rule, 'id'> = {
@@ -190,7 +197,7 @@ export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="max_message_chars">Max Chars</SelectItem>
-                  <SelectItem value="keyword_blocklist">Keyword Blocklist</SelectItem>
+                  <SelectItem value="keyword_detector">Keyword Detector</SelectItem>
                   <SelectItem value="pii_detector">PII Detector</SelectItem>
                   <SelectItem value="json_format">JSON Format</SelectItem>
                 </SelectContent>
@@ -213,10 +220,11 @@ export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false
               <Select value={form.action} onValueChange={(v) => setForm({ ...form, action: v as RuleAction })} disabled={readOnly}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="allow">Allow</SelectItem>
-                  <SelectItem value="block">Block</SelectItem>
-                  <SelectItem value="mask">Mask</SelectItem>
-                  <SelectItem value="log_only">Log Only</SelectItem>
+                  {ALLOWED_ACTIONS_BY_KIND[form.kind as RuleKind]?.map((action) => (
+                    <SelectItem key={action} value={action}>
+                      {action === 'log_only' ? 'Log Only' : action.charAt(0).toUpperCase() + action.slice(1)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -250,6 +258,19 @@ export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false
                   />
                 </div>
               )}
+            </div>
+          )}
+          {form.kind === 'keyword_detector' && form.action === 'mask' && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Replacement word</Label>
+              <Input
+                value={(parsedConfig.replacement as string) || ''}
+                onChange={(e) => updateConfig({ replacement: e.target.value || undefined })}
+                placeholder="[REDACTED]"
+                className="font-mono text-xs"
+                disabled={readOnly}
+              />
+              <p className="text-[10px] font-mono text-muted-foreground">Leave empty to default to [REDACTED]</p>
             </div>
           )}
           <div className="space-y-1.5">

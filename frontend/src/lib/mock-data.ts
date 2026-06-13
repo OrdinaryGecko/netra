@@ -23,7 +23,7 @@ export const mockPolicyVersion: PolicyVersion = {
     {
       id: 'r-002',
       name: 'Profanity filter',
-      kind: 'keyword_blocklist',
+      kind: 'keyword_detector',
       stage: 'input',
       action: 'block',
       priority: 2,
@@ -69,7 +69,7 @@ export function simulateDryRun(payload: string, rules: PolicyVersion['rules']): 
         detail = triggered ? `Message is ${payload.length} chars (max ${max})` : `Within limit (${payload.length}/${max})`;
         break;
       }
-      case 'keyword_blocklist': {
+      case 'keyword_detector': {
         const keywords = (rule.config.keywords as string[]) || [];
         const lower = payload.toLowerCase();
         const found = keywords.filter((k) => lower.includes(k.toLowerCase()));

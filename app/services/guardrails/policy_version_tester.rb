@@ -39,7 +39,13 @@ module Guardrails
         )
       end
 
-      provider_response = execute_provider? ? provider.complete(messages: messages) : simulated_provider_response
+      forwarded_messages = if input_decision[:masked]
+        mask_messages(messages, input_decision[:mask_keywords], input_decision[:mask_replacement])
+      else
+        messages
+      end
+
+      provider_response = execute_provider? ? provider.complete(messages: forwarded_messages) : simulated_provider_response(forwarded_messages)
 
       output_decision = Evaluator.call(
         rules: @policy_version.rules.enabled.where(stage: "output"),
@@ -50,14 +56,14 @@ module Guardrails
 
       action = if output_decision[:blocked]
         "block"
-      elsif output_decision[:masked]
+      elsif output_decision[:masked] || input_decision[:masked]
         "mask"
       else
         "allow"
       end
 
       status = output_decision[:blocked] ? "blocked" : "allowed"
-      final_response = output_decision[:masked] ? provider_response.merge(content: Masker.mask(provider_response[:content])) : provider_response
+      final_response = output_decision[:masked] ? provider_response.merge(content: Masker.mask(provider_response[:content], keywords: output_decision[:mask_keywords], replacement: output_decision[:mask_replacement])) : provider_response
 
       dry_run_result(
         status:,
@@ -104,7 +110,13 @@ module Guardrails
         )
       end
 
-      provider_response = execute_provider? ? provider.complete(messages: messages) : simulated_provider_response
+      forwarded_messages = if input_decision[:masked]
+        mask_messages(messages, input_decision[:mask_keywords], input_decision[:mask_replacement])
+      else
+        messages
+      end
+
+      provider_response = execute_provider? ? provider.complete(messages: forwarded_messages) : simulated_provider_response(forwarded_messages)
 
       output_decision = Evaluator.call(
         rules: output_rules,
@@ -115,14 +127,14 @@ module Guardrails
 
       action = if output_decision[:blocked]
         "block"
-      elsif output_decision[:masked]
+      elsif output_decision[:masked] || input_decision[:masked]
         "mask"
       else
         "allow"
       end
 
       status = output_decision[:blocked] ? "blocked" : "allowed"
-      final_response = output_decision[:masked] ? provider_response.merge(content: Masker.mask(provider_response[:content])) : provider_response
+      final_response = output_decision[:masked] ? provider_response.merge(content: Masker.mask(provider_response[:content], keywords: output_decision[:mask_keywords], replacement: output_decision[:mask_replacement])) : provider_response
 
       dry_run_result_for_project(
         policy_versions:,
@@ -199,7 +211,7 @@ module Guardrails
         suffix = scope.present? ? " on #{scope.tr('_', ' ')}" : ""
 
         evaluation[:outcome] == "matched" ? "Message is #{length} chars#{suffix} (max #{max})" : "Within limit#{suffix} (#{length}/#{max})"
-      when "keyword_blocklist"
+      when "keyword_detector"
         keywords = Array(details[:keywords] || details["keywords"])
         scope = details[:scope] || details["scope"]
         suffix = scope.present? ? " in #{scope.tr('_', ' ')}" : ""
@@ -247,15 +259,22 @@ module Guardrails
       messages.map { |message| message[:content] }.join("\n")
     end
 
+    def mask_messages(msgs, keywords, replacement = "[REDACTED]")
+      msgs.map do |msg|
+        msg.merge(content: Masker.mask(msg[:content].to_s, keywords: keywords, replacement: replacement))
+      end
+    end
+
     def execute_provider?
       ActiveModel::Type::Boolean.new.cast(normalized_payload[:execute_provider])
     end
 
-    def simulated_provider_response
+    def simulated_provider_response(forwarded_messages = nil)
+      content = (forwarded_messages || messages).last[:content].to_s
       {
         provider: provider_name,
         model: model_name,
-        content: messages.last[:content].to_s
+        content: content
       }
     end
 

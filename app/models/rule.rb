@@ -1,7 +1,14 @@
 class Rule < ApplicationRecord
-  KINDS = %w[max_message_chars keyword_blocklist pii_detector json_format].freeze
+  KINDS = %w[max_message_chars keyword_detector pii_detector json_format].freeze
   ACTIONS = %w[allow block mask log_only].freeze
   STAGES = %w[input output].freeze
+
+  ALLOWED_ACTIONS_BY_KIND = {
+    "max_message_chars" => %w[block allow log_only],
+    "keyword_detector" => %w[block mask allow log_only],
+    "pii_detector" => %w[block mask allow log_only],
+    "json_format" => %w[block allow log_only]
+  }.freeze
 
   belongs_to :policy_version
 
@@ -9,6 +16,7 @@ class Rule < ApplicationRecord
   validates :kind, inclusion: { in: KINDS }
   validates :stage, inclusion: { in: STAGES }
   validates :action, inclusion: { in: ACTIONS }
+  validate :action_allowed_for_kind
   validate :policy_version_must_be_draft
 
   before_destroy :ensure_policy_version_mutable!
@@ -16,6 +24,15 @@ class Rule < ApplicationRecord
   scope :enabled, -> { where(enabled: true) }
 
   private
+
+  def action_allowed_for_kind
+    return if kind.blank? || action.blank?
+
+    allowed = ALLOWED_ACTIONS_BY_KIND[kind]
+    return if allowed.nil? || allowed.include?(action)
+
+    errors.add(:action, "#{action} is not valid for #{kind} rules")
+  end
 
   def policy_version_must_be_draft
     return unless policy_version
