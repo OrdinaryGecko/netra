@@ -62,7 +62,7 @@ module V1
       {
         application_key: client_application.key,
         agent_identifier: agent&.identifier,
-        environment: request.headers["X-Netra-Environment"].to_s.presence || client_application.default_environment,
+        environment: request.headers["X-Netra-Environment"].to_s.presence || "development",
         provider: request.headers["X-Netra-Provider"].to_s.presence || "openai",
         model: chat_completion_params[:model],
         metadata: {},

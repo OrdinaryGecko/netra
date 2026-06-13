@@ -11,7 +11,7 @@ class Project < ApplicationRecord
   has_many :provider_configs, dependent: :destroy
   has_many :guardrail_requests, dependent: :destroy
 
-  validates :name, :key, :default_environment, :fail_mode, presence: true
+  validates :name, :key, :fail_mode, presence: true
   validates :key, uniqueness: { scope: :organization_id }
   validates :fail_mode, inclusion: { in: FAIL_MODES }
   validates :upstream_provider, inclusion: { in: UPSTREAM_PROVIDERS }, allow_blank: true

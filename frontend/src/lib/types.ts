@@ -18,11 +18,9 @@ export interface Project {
   name: string;
   slug: string;
   description: string;
-  environment: "production" | "staging" | "development";
   policySetsCount: number;
   updatedAt?: string | null;
   key: string;
-  defaultEnvironment: string;
   upstreamBaseUrl?: string | null;
   upstreamProvider?: string | null;
   failMode: "open" | "closed";

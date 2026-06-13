@@ -101,8 +101,7 @@ export function ProjectDryRunPanel({ projectId }: ProjectDryRunPanelProps) {
             <div className="flex-1 min-w-0">
               <CardTitle className="text-base font-mono">Pipeline dry run</CardTitle>
               <CardDescription className="text-xs mt-0.5">
-                Runs the payload through every enabled active set
-                {project ? ` for the ${project.defaultEnvironment} environment` : ''}.
+                Runs the payload through every enabled active set.
                 Rules execute sorted by set priority, then rule priority.
               </CardDescription>
             </div>

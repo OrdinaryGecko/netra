@@ -4,7 +4,6 @@ class CreateProjects < ActiveRecord::Migration[8.1]
       t.references :organization, null: false, foreign_key: true
       t.string :name, null: false
       t.string :key, null: false
-      t.string :default_environment, null: false, default: "development"
       t.string :upstream_base_url
       t.string :upstream_provider
       t.string :encrypted_upstream_key

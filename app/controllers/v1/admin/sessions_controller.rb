@@ -60,7 +60,6 @@ module V1
           id: project.id,
           name: project.name,
           key: project.key,
-          default_environment: project.default_environment,
           organization: {
             id: project.organization.id,
             name: project.organization.name,

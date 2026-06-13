@@ -18,7 +18,6 @@ module V1
           project.client_applications.create!(
             name: project.name,
             key: project.key,
-            default_environment: project.default_environment,
             active: project.active
           )
           render json: serialize_project(project), status: :created
@@ -41,7 +40,7 @@ module V1
       def dry_run
         project = current_organization.projects.find(params[:id])
         client_application = project.client_applications.first
-        environment = project.default_environment
+        environment = params[:environment].presence || "development"
 
         result = Guardrails::PolicyVersionTester.call_for_project(
           project:,
@@ -64,7 +63,6 @@ module V1
           id: project.id,
           name: project.name,
           key: project.key,
-          default_environment: project.default_environment,
           upstream_base_url: project.upstream_base_url,
           upstream_provider: project.upstream_provider,
           fail_mode: project.fail_mode,
@@ -82,7 +80,6 @@ module V1
         params.require(:project).permit(
           :name,
           :key,
-          :default_environment,
           :upstream_base_url,
           :upstream_provider,
           :encrypted_upstream_key,
@@ -95,7 +92,6 @@ module V1
         project.client_applications.update_all(
           name: project.name,
           key: project.key,
-          default_environment: project.default_environment,
           active: project.active,
           updated_at: Time.current
         )
@@ -103,6 +99,7 @@ module V1
 
       def test_params
         params.permit(
+          :environment,
           :provider,
           :model,
           :execute_provider,

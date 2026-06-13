@@ -21,7 +21,6 @@ class ClientApplication < ApplicationRecord
 
     created_project = organization.projects.find_or_create_by!(key:) do |project|
       project.name = name
-      project.default_environment = default_environment
     end
 
     update_column(:project_id, created_project.id)

@@ -4,13 +4,11 @@ end
 
 project = organization.projects.find_or_create_by!(key: "demo-app") do |record|
   record.name = "Demo Project"
-  record.default_environment = "development"
   record.upstream_provider = "stub"
 end
 
 client_application = ClientApplication.find_or_create_by!(key: "demo-app") do |app|
   app.name = "Demo Application"
-  app.default_environment = "development"
 end
 client_application.update!(project:) if client_application.project != project
 

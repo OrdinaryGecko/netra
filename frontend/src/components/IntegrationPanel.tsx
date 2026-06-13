@@ -27,7 +27,7 @@ client = OpenAI(
     api_key="${KEY_PLACEHOLDER}",
     base_url="${baseUrl}/v1",
     default_headers={
-        "X-Netra-Environment": "${project.defaultEnvironment}",
+        "X-Netra-Environment": "production",
         "X-Netra-Provider": "${provider}",
         # "X-Netra-Agent-Identifier": "support-bot",
     },
@@ -42,7 +42,7 @@ print(response.choices[0].message.content)`;
   const curlOpenAI = `curl ${baseUrl}/v1/chat/completions \\
   -H "Authorization: Bearer ${KEY_PLACEHOLDER}" \\
   -H "Content-Type: application/json" \\
-  -H "X-Netra-Environment: ${project.defaultEnvironment}" \\
+  -H "X-Netra-Environment: production" \\
   -H "X-Netra-Provider: ${provider}" \\
   -d '{
     "model": "gpt-4o-mini",
@@ -54,7 +54,7 @@ print(response.choices[0].message.content)`;
   -H "Content-Type: application/json" \\
   -d '{
     "application_key": "${project.key}",
-    "environment": "${project.defaultEnvironment}",
+    "environment": "production",
     "provider": "${provider}",
     "model": "gpt-4o-mini",
     "messages": [{"role": "user", "content": "Hello"}],
@@ -80,7 +80,6 @@ print(response.choices[0].message.content)`;
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <CopyField label="Project key (application_key)" value={project.key} />
-            <CopyField label="Default environment" value={project.defaultEnvironment} />
             <CopyField label="Upstream provider" value={provider} />
             <CopyField label="X-Netra-Project-Id header" value={String(project.id)} />
           </div>
@@ -136,7 +135,7 @@ print(response.choices[0].message.content)`;
         <CardContent>
           <div className="border rounded-md divide-y text-xs font-mono">
             {[
-              ['X-Netra-Environment', `Override the environment for this request (e.g. ${project.defaultEnvironment}).`],
+              ['X-Netra-Environment', 'Set the environment for this request (e.g. production, staging, development).'],
               ['X-Netra-Provider', 'Override the upstream provider (defaults to openai).'],
               ['X-Netra-Agent-Identifier', 'Tag requests with an agent identifier for analytics.'],
               ['X-Netra-Project-Id', 'Switch project context when one runtime key has access to multiple projects.'],

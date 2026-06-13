@@ -4,7 +4,7 @@ module Admin
       if policy_sets.any?
         redirect_to admin_policy_set_path(policy_sets.first)
       else
-        @policy_set = current_client_application.policy_sets.new(environment: current_project.default_environment, project: current_project)
+        @policy_set = current_client_application.policy_sets.new(environment: "development", project: current_project)
       end
     end
 

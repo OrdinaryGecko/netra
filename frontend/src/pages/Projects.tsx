@@ -4,7 +4,6 @@ import { useMutation } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { AppHeader } from '@/components/AppHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FolderKanban, ChevronRight, Building2, Users, Plus, Loader2 } from 'lucide-react';
 import {
@@ -13,18 +12,8 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import { Project } from '@/lib/types';
 import { createProject } from '@/lib/api';
 import { toast } from 'sonner';
-
-const envColor: Record<string, string> = {
-  production: 'bg-primary/10 text-primary border-primary/30',
-  staging: 'bg-amber-500/10 text-amber-600 border-amber-500/30 dark:text-amber-400',
-  development: 'bg-muted text-muted-foreground border-border',
-};
 
 export default function Projects() {
   const { organization, projects, membership, refreshProjects } = useAuth();
@@ -33,19 +22,16 @@ export default function Projects() {
   const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [environment, setEnvironment] = useState<Project['environment']>('development');
 
   const reset = () => {
     setName('');
     setDescription('');
-    setEnvironment('development');
   };
 
   const createMutation = useMutation({
     mutationFn: () => createProject({
       name: name.trim(),
       description: description.trim(),
-      environment,
     }),
     onSuccess: async (project) => {
       await refreshProjects();
@@ -140,10 +126,6 @@ export default function Projects() {
                   </CardHeader>
                   <CardContent className="pt-0">
                     <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
-                      <Badge variant="outline" className={`font-mono text-[10px] uppercase ${envColor[project.environment]}`}>
-                        {project.environment}
-                      </Badge>
-                      <span>·</span>
                       <span>{project.policySetsCount} policy set{project.policySetsCount !== 1 ? 's' : ''}</span>
                       <span>·</span>
                       <span className="truncate">/{project.slug}</span>
@@ -197,23 +179,6 @@ export default function Projects() {
                 rows={3}
                 disabled={createMutation.isPending}
               />
-            </div>
-            <div className="space-y-2">
-              <Label className="font-mono text-xs uppercase tracking-wider">Default Environment</Label>
-              <Select
-                value={environment}
-                onValueChange={(value) => setEnvironment(value as Project['environment'])}
-                disabled={createMutation.isPending}
-              >
-                <SelectTrigger className="font-mono text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="development" className="font-mono text-sm">Development</SelectItem>
-                  <SelectItem value="staging" className="font-mono text-sm">Staging</SelectItem>
-                  <SelectItem value="production" className="font-mono text-sm">Production</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
             {createMutation.isError && (
               <p className="text-sm text-destructive font-mono">

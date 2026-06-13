@@ -4,11 +4,10 @@ class ChatCompletionsTest < ActionDispatch::IntegrationTest
   setup do
     @client_application = ClientApplication.create!(
       name: "Chat App",
-      key: "chat-app",
-      default_environment: "test"
+      key: "chat-app"
     )
     @client_application.agents.create!(name: "Assistant", identifier: "assistant")
-    @policy_set = @client_application.policy_sets.create!(name: "default", environment: "test")
+    @policy_set = @client_application.policy_sets.create!(name: "default", environment: "development")
     @policy_version = @policy_set.policy_versions.create!(version: "1", status: "draft")
     @policy_version.rules.create!(
       name: "max-input",

@@ -8,7 +8,6 @@ type SessionPayload = {
     id: number;
     name: string;
     key: string;
-    default_environment: string;
     organization: { id: number; name: string; slug: string };
   } | null;
 };
@@ -17,7 +16,6 @@ type BackendProject = {
   id: number;
   name: string;
   key: string;
-  default_environment: string;
   upstream_base_url?: string | null;
   upstream_provider?: string | null;
   fail_mode: "open" | "closed";
@@ -150,12 +148,6 @@ function mapPolicyVersion(policyVersion: BackendPolicyVersion): PolicyVersion {
   };
 }
 
-function environmentFromProject(project: BackendProject): Project["environment"] {
-  const value = project.default_environment.toLowerCase();
-  if (value === "production" || value === "staging" || value === "development") return value;
-  return "development";
-}
-
 function mapProject(project: BackendProject): Project {
   return {
     id: String(project.id),
@@ -165,9 +157,7 @@ function mapProject(project: BackendProject): Project {
     description: project.upstream_provider
       ? `${project.upstream_provider} runtime project`
       : "AI workload protected by Netra guardrails",
-    environment: environmentFromProject(project),
     key: project.key,
-    defaultEnvironment: project.default_environment,
     upstreamBaseUrl: project.upstream_base_url,
     upstreamProvider: project.upstream_provider,
     failMode: project.fail_mode,
@@ -191,7 +181,6 @@ function mapSession(payload: SessionPayload): AdminSession {
           id: payload.project.id,
           name: payload.project.name,
           key: payload.project.key,
-          default_environment: payload.project.default_environment,
           fail_mode: "open",
           active: true,
           organization: payload.project.organization,
@@ -266,8 +255,9 @@ export async function fetchPolicySets(): Promise<PolicySetSummary[]> {
   }));
 }
 
-export async function fetchPolicySetsForProject(projectId: string): Promise<PolicySetSummary[]> {
-  const payload = await request<BackendPolicySet[]>("/v1/admin/policy_sets", { projectId });
+export async function fetchPolicySetsForProject(projectId: string, environment?: string): Promise<PolicySetSummary[]> {
+  const path = environment ? `/v1/admin/policy_sets?environment=${encodeURIComponent(environment)}` : "/v1/admin/policy_sets";
+  const payload = await request<BackendPolicySet[]>(path, { projectId });
   return payload.map((policySet) => ({
     id: String(policySet.id),
     name: policySet.name,
@@ -308,7 +298,6 @@ function slugify(value: string) {
 export async function createProject(params: {
   name: string;
   description: string;
-  environment: "production" | "staging" | "development";
   projectId?: string;
 }): Promise<Project> {
   const baseKey = slugify(params.name) || `project-${Date.now()}`;
@@ -319,7 +308,6 @@ export async function createProject(params: {
       project: {
         name: params.name,
         key: baseKey,
-        default_environment: params.environment,
         fail_mode: "open",
         active: true,
         upstream_provider: "stub",
