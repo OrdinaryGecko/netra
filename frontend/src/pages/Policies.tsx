@@ -202,17 +202,23 @@ export default function Policies() {
                       <div className="flex items-center gap-4 text-xs text-muted-foreground font-mono flex-wrap">
                         <span>{policy.policyVersions.length} version{policy.policyVersions.length !== 1 ? 's' : ''}</span>
                         <span>·</span>
-                        {active ? (
+                        {active && active.version === latest.version ? (
                           <span className="flex items-center gap-1.5">
                             Active: <StatusBadge status="active" /> v{active.version}
                           </span>
+                        ) : active ? (
+                          <>
+                            <span className="flex items-center gap-1.5">
+                              Active: <StatusBadge status="active" /> v{active.version}
+                            </span>
+                            <span>·</span>
+                            <span className="flex items-center gap-1.5">
+                              Latest: <StatusBadge status={latest.status} /> v{latest.version}
+                            </span>
+                          </>
                         ) : (
                           <span className="text-muted-foreground/70">No active version</span>
                         )}
-                        <span>·</span>
-                        <span className="flex items-center gap-1.5">
-                          Latest: <StatusBadge status={latest.status} /> v{latest.version}
-                        </span>
                         <span>·</span>
                         <span>{latest.rulesCount || 0} rule{latest.rulesCount !== 1 ? 's' : ''}</span>
                         {!policy.enabled && (
