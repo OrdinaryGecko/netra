@@ -35,7 +35,7 @@ end
 
 rules = [
   {
-    name: "input-size-limit",
+    name: "input size limit",
     kind: "max_message_chars",
     stage: "input",
     action: "block",
@@ -43,15 +43,15 @@ rules = [
     config: { max: 4_000 }
   },
   {
-    name: "prompt-injection-keywords",
-    kind: "keyword_detector",
+    name: "prompt injection keywords",
+    kind: "keyword_blocklist",
     stage: "input",
     action: "block",
     priority: 20,
     config: { keywords: ["ignore previous instructions", "reveal system prompt"] }
   },
   {
-    name: "output-pii-mask",
+    name: "output pii mask",
     kind: "pii_detector",
     stage: "output",
     action: "mask",
@@ -59,7 +59,7 @@ rules = [
     config: {}
   },
   {
-    name: "json-output-enforcer",
+    name: "json output enforcer",
     kind: "json_format",
     stage: "output",
     action: "block",
