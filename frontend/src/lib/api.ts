@@ -498,3 +498,44 @@ export async function dryRunProject(projectId: string, content: string): Promise
     evaluations: payload.evaluations || [],
   };
 }
+
+export async function updateProject(projectId: string, params: {
+  name?: string;
+  upstream_provider?: string | null;
+  upstream_base_url?: string | null;
+  fail_mode?: "open" | "closed";
+  active?: boolean;
+}): Promise<Project> {
+  const payload = await request<BackendProject>(`/v1/admin/projects/${projectId}`, {
+    method: "PATCH",
+    projectId,
+    body: { project: params },
+  });
+  return mapProject(payload);
+}
+
+export async function updatePolicySet(policySetId: string, params: {
+  name?: string;
+  environment?: string;
+  priority?: number;
+  active?: boolean;
+  enabled?: boolean;
+}, projectId?: string): Promise<void> {
+  await request(`/v1/admin/policy_sets/${policySetId}`, {
+    method: "PATCH",
+    projectId,
+    body: { policy_set: params },
+  });
+}
+
+export async function updatePolicyVersion(policyVersionId: string, params: {
+  version?: string;
+  definition?: Record<string, unknown>;
+}, projectId?: string): Promise<PolicyVersion> {
+  const payload = await request<BackendPolicyVersion>(`/v1/admin/policy_versions/${policyVersionId}`, {
+    method: "PATCH",
+    projectId,
+    body: { policy_version: params },
+  });
+  return mapPolicyVersion(payload);
+}

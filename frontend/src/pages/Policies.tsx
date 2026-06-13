@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { Plus, Search, FileText, ChevronRight, FolderKanban, ChevronDown, Plug, ListTree, Workflow, FlaskConical } from 'lucide-react';
+import { Plus, Search, FileText, ChevronRight, FolderKanban, ChevronDown, Plug, ListTree, Workflow, FlaskConical, Settings, Pencil } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -24,7 +24,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { IntegrationPanel } from '@/components/IntegrationPanel';
 import { PipelinePanel } from '@/components/PipelinePanel';
 import { ProjectDryRunPanel } from '@/components/ProjectDryRunPanel';
-import { createPolicySet, fetchPolicySetsForProject } from '@/lib/api';
+import { createPolicySet, fetchPolicySetsForProject, updatePolicySet } from '@/lib/api';
+import { ProjectSettingsPanel } from '@/components/ProjectSettingsPanel';
+import { PolicySetSummary } from '@/lib/types';
 
 export default function Policies() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -39,6 +41,10 @@ export default function Policies() {
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [newEnv, setNewEnv] = useState('development');
+  const [editingSet, setEditingSet] = useState<PolicySetSummary | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editEnv, setEditEnv] = useState('development');
+  const [editPriority, setEditPriority] = useState(100);
 
   const policySetsQuery = useQuery({
     queryKey: ['policy-sets', projectId, envFilter],
@@ -65,6 +71,27 @@ export default function Policies() {
     },
     onError: (error: Error) => toast.error(error.message),
   });
+
+  const updateSetMutation = useMutation({
+    mutationFn: () => updatePolicySet(editingSet!.id, {
+      name: editName.trim(),
+      environment: editEnv,
+      priority: editPriority,
+    }, projectId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['policy-sets', projectId] });
+      setEditingSet(null);
+      toast.success('Policy set updated');
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const openEditSet = (policy: PolicySetSummary) => {
+    setEditingSet(policy);
+    setEditName(policy.name);
+    setEditEnv(policy.environment);
+    setEditPriority(policy.priority);
+  };
 
   const filtered = useMemo(() => {
     const items = policySetsQuery.data || [];
@@ -139,6 +166,10 @@ export default function Policies() {
               <Plug className="h-3.5 w-3.5" />
               Integration
             </TabsTrigger>
+            <TabsTrigger value="settings" className="gap-1.5">
+              <Settings className="h-3.5 w-3.5" />
+              Settings
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="sets" className="mt-6 space-y-4">
@@ -195,7 +226,17 @@ export default function Policies() {
                             <CardDescription className="text-xs mt-0.5">{policy.description}</CardDescription>
                           </div>
                         </div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-1 shrink-0" />
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => { e.stopPropagation(); openEditSet(policy); }}
+                          >
+                            <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                          </Button>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent className="pt-0 space-y-3">
@@ -295,6 +336,10 @@ export default function Policies() {
           <TabsContent value="integration" className="mt-6">
             {project && <IntegrationPanel project={project} />}
           </TabsContent>
+
+          <TabsContent value="settings" className="mt-6">
+            {project && <ProjectSettingsPanel project={project} />}
+          </TabsContent>
         </Tabs>
       </div>
 
@@ -343,6 +388,43 @@ export default function Policies() {
             </Button>
             <Button onClick={handleCreate} disabled={!newName.trim() || createPolicyMutation.isPending} className="font-mono text-xs">
               {createPolicyMutation.isPending ? 'Creating...' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editingSet} onOpenChange={(o) => { if (!o) setEditingSet(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-mono">Edit Policy Set</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label className="font-mono text-xs uppercase tracking-wider">Name</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="font-mono text-sm" disabled={updateSetMutation.isPending} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="font-mono text-xs uppercase tracking-wider">Environment</Label>
+                <Select value={editEnv} onValueChange={setEditEnv} disabled={updateSetMutation.isPending}>
+                  <SelectTrigger className="font-mono text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="development" className="font-mono text-sm">Development</SelectItem>
+                    <SelectItem value="staging" className="font-mono text-sm">Staging</SelectItem>
+                    <SelectItem value="production" className="font-mono text-sm">Production</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="font-mono text-xs uppercase tracking-wider">Priority</Label>
+                <Input type="number" min={1} value={editPriority} onChange={(e) => setEditPriority(parseInt(e.target.value) || 100)} className="font-mono text-sm" disabled={updateSetMutation.isPending} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingSet(null)} className="font-mono text-xs" disabled={updateSetMutation.isPending}>Cancel</Button>
+            <Button onClick={() => updateSetMutation.mutate()} disabled={!editName.trim() || updateSetMutation.isPending} className="font-mono text-xs">
+              {updateSetMutation.isPending ? 'Saving...' : 'Save'}
             </Button>
           </DialogFooter>
         </DialogContent>

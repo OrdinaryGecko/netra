@@ -1,0 +1,105 @@
+import { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
+import { updateProject } from '@/lib/api';
+import { Project } from '@/lib/types';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { toast } from 'sonner';
+import { Settings } from 'lucide-react';
+
+interface ProjectSettingsPanelProps {
+  project: Project;
+}
+
+export function ProjectSettingsPanel({ project }: ProjectSettingsPanelProps) {
+  const { refreshProjects } = useAuth();
+  const [name, setName] = useState(project.name);
+  const [upstreamProvider, setUpstreamProvider] = useState(project.upstreamProvider || 'stub');
+  const [upstreamBaseUrl, setUpstreamBaseUrl] = useState(project.upstreamBaseUrl || '');
+  const [failMode, setFailMode] = useState(project.failMode);
+  const [active, setActive] = useState(project.active);
+
+  const mutation = useMutation({
+    mutationFn: () => updateProject(project.id, {
+      name: name.trim(),
+      upstream_provider: upstreamProvider,
+      upstream_base_url: upstreamBaseUrl || null,
+      fail_mode: failMode,
+      active,
+    }),
+    onSuccess: async () => {
+      await refreshProjects();
+      toast.success('Project settings saved');
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const dirty = name !== project.name
+    || upstreamProvider !== (project.upstreamProvider || 'stub')
+    || upstreamBaseUrl !== (project.upstreamBaseUrl || '')
+    || failMode !== project.failMode
+    || active !== project.active;
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <Settings className="h-4 w-4 text-primary" />
+          </div>
+          <CardTitle className="text-base font-mono">Project settings</CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Name</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} className="font-mono text-xs" disabled={mutation.isPending} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Project key</Label>
+            <Input value={project.key} disabled className="font-mono text-xs opacity-60" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Upstream provider</Label>
+            <Select value={upstreamProvider} onValueChange={setUpstreamProvider} disabled={mutation.isPending}>
+              <SelectTrigger className="font-mono text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="stub" className="font-mono text-xs">Stub (testing)</SelectItem>
+                <SelectItem value="openai" className="font-mono text-xs">OpenAI</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Fail mode</Label>
+            <Select value={failMode} onValueChange={(v) => setFailMode(v as 'open' | 'closed')} disabled={mutation.isPending}>
+              <SelectTrigger className="font-mono text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="open" className="font-mono text-xs">Open (allow on error)</SelectItem>
+                <SelectItem value="closed" className="font-mono text-xs">Closed (block on error)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Upstream base URL</Label>
+            <Input value={upstreamBaseUrl} onChange={(e) => setUpstreamBaseUrl(e.target.value)} placeholder="https://api.openai.com" className="font-mono text-xs" disabled={mutation.isPending} />
+          </div>
+          <div className="flex items-center gap-3">
+            <Switch checked={active} onCheckedChange={setActive} disabled={mutation.isPending} />
+            <Label className="font-mono text-xs">Project active</Label>
+          </div>
+        </div>
+        <div className="pt-2">
+          <Button onClick={() => mutation.mutate()} disabled={!dirty || !name.trim() || mutation.isPending} className="font-mono text-xs">
+            {mutation.isPending ? 'Saving...' : 'Save changes'}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
