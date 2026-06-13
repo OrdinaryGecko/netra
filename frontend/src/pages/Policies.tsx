@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { IntegrationPanel } from '@/components/IntegrationPanel';
@@ -45,6 +46,7 @@ export default function Policies() {
   const [editName, setEditName] = useState('');
   const [editEnv, setEditEnv] = useState('development');
   const [editPriority, setEditPriority] = useState(100);
+  const [editEnabled, setEditEnabled] = useState(true);
 
   const policySetsQuery = useQuery({
     queryKey: ['policy-sets', projectId, envFilter],
@@ -77,6 +79,7 @@ export default function Policies() {
       name: editName.trim(),
       environment: editEnv,
       priority: editPriority,
+      enabled: editEnabled,
     }, projectId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['policy-sets', projectId] });
@@ -91,6 +94,7 @@ export default function Policies() {
     setEditName(policy.name);
     setEditEnv(policy.environment);
     setEditPriority(policy.priority);
+    setEditEnabled(policy.enabled);
   };
 
   const filtered = useMemo(() => {
@@ -419,6 +423,10 @@ export default function Policies() {
                 <Label className="font-mono text-xs uppercase tracking-wider">Priority</Label>
                 <Input type="number" min={1} value={editPriority} onChange={(e) => setEditPriority(parseInt(e.target.value) || 100)} className="font-mono text-sm" disabled={updateSetMutation.isPending} />
               </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch checked={editEnabled} onCheckedChange={setEditEnabled} disabled={updateSetMutation.isPending} />
+              <Label className="font-mono text-xs">Enabled</Label>
             </div>
           </div>
           <DialogFooter>
