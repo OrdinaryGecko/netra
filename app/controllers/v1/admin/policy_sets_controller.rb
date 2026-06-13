@@ -2,7 +2,9 @@ module V1
   module Admin
     class PolicySetsController < Admin::BaseController
       def index
-        policy_sets = current_project.policy_sets.includes(policy_versions: :rules).order(:name)
+        policy_sets = current_project.policy_sets.includes(policy_versions: :rules)
+        policy_sets = policy_sets.where(environment: params[:environment]) if params[:environment].present?
+        policy_sets = policy_sets.order(:name)
         render json: policy_sets.map { |policy_set| serialize_policy_set(policy_set) }
       end
 

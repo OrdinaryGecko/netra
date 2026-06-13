@@ -16,6 +16,9 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { IntegrationPanel } from '@/components/IntegrationPanel';
@@ -31,13 +34,15 @@ export default function Policies() {
   const queryClient = useQueryClient();
 
   const [search, setSearch] = useState('');
+  const [envFilter, setEnvFilter] = useState<string>('all');
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
+  const [newEnv, setNewEnv] = useState('development');
 
   const policySetsQuery = useQuery({
-    queryKey: ['policy-sets', projectId],
-    queryFn: () => fetchPolicySetsForProject(projectId!),
+    queryKey: ['policy-sets', projectId, envFilter],
+    queryFn: () => fetchPolicySetsForProject(projectId!, envFilter === 'all' ? undefined : envFilter),
     enabled: Boolean(projectId && project),
   });
 
@@ -45,7 +50,7 @@ export default function Policies() {
     mutationFn: () => createPolicySet({
       name: newName.trim(),
       description: newDesc.trim(),
-      environment: project?.defaultEnvironment || 'development',
+      environment: newEnv,
       projectId,
     }),
     onSuccess: async ({ policyVersion }) => {
@@ -53,6 +58,7 @@ export default function Policies() {
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
       setNewName('');
       setNewDesc('');
+      setNewEnv('development');
       setCreateOpen(false);
       toast.success('Policy created with an initial draft version');
       navigate(`/projects/${projectId}/policy/${policyVersion.id}`);
@@ -136,14 +142,27 @@ export default function Policies() {
           </TabsList>
 
           <TabsContent value="sets" className="mt-6 space-y-4">
-            <div className="relative max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search policies..."
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                className="pl-9 font-mono text-xs"
-              />
+            <div className="flex items-center gap-3">
+              <div className="relative max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search policies..."
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  className="pl-9 font-mono text-xs"
+                />
+              </div>
+              <Select value={envFilter} onValueChange={setEnvFilter}>
+                <SelectTrigger className="w-[160px] font-mono text-xs">
+                  <SelectValue placeholder="Environment" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="font-mono text-xs">All environments</SelectItem>
+                  <SelectItem value="development" className="font-mono text-xs">Development</SelectItem>
+                  <SelectItem value="staging" className="font-mono text-xs">Staging</SelectItem>
+                  <SelectItem value="production" className="font-mono text-xs">Production</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid gap-4">
@@ -285,6 +304,19 @@ export default function Policies() {
                 onChange={(event) => setNewName(event.target.value)}
                 className="font-mono text-sm"
               />
+            </div>
+            <div className="space-y-2">
+              <Label className="font-mono text-xs uppercase tracking-wider">Environment</Label>
+              <Select value={newEnv} onValueChange={setNewEnv}>
+                <SelectTrigger className="font-mono text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="development" className="font-mono text-sm">Development</SelectItem>
+                  <SelectItem value="staging" className="font-mono text-sm">Staging</SelectItem>
+                  <SelectItem value="production" className="font-mono text-sm">Production</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label className="font-mono text-xs uppercase tracking-wider">Description</Label>
