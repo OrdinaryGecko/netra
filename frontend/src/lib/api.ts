@@ -332,13 +332,13 @@ export async function publishPolicyVersion(policyVersionId: string, projectId?: 
   return mapPolicyVersion(payload);
 }
 
-export async function clonePolicyVersion(policyVersion: PolicyVersion, projectId?: string): Promise<PolicyVersion> {
+export async function clonePolicyVersion(policyVersion: PolicyVersion, projectId?: string, versionName?: string): Promise<PolicyVersion> {
   const payload = await request<BackendPolicyVersion>(`/v1/admin/policy_versions/${policyVersion.id}/clone`, {
     method: "POST",
     projectId,
     body: {
       policy_version: {
-        version: `${policyVersion.version}-draft`,
+        version: versionName || `${policyVersion.version}-draft`,
         definition: {
           description: policyVersion.description,
         },

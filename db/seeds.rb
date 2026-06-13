@@ -28,7 +28,7 @@ provider_config.update!(project:) if provider_config.project != project
 
 policy_set = client_application.policy_sets.find_or_create_by!(name: "default", environment: "development")
 policy_set.update!(project:) if policy_set.project != project
-policy_version = policy_set.policy_versions.find_or_create_by!(version: "2026-03-18.1") do |version|
+policy_version = policy_set.policy_versions.find_or_create_by!(version: "1") do |version|
   version.status = "draft"
   version.definition = { description: "Default MVP guardrails policy" }
 end

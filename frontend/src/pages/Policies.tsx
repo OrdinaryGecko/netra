@@ -202,9 +202,9 @@ export default function Policies() {
                       <div className="flex items-center gap-4 text-xs text-muted-foreground font-mono flex-wrap">
                         <span>{policy.policyVersions.length} version{policy.policyVersions.length !== 1 ? 's' : ''}</span>
                         <span>·</span>
-                        {active && active.version === latest.version ? (
+                        {active && active.id === latest.id ? (
                           <span className="flex items-center gap-1.5">
-                            Active: <StatusBadge status="active" /> v{active.version}
+                            Active & Latest: <StatusBadge status="active" /> v{active.version}
                           </span>
                         ) : active ? (
                           <>
@@ -217,7 +217,9 @@ export default function Policies() {
                             </span>
                           </>
                         ) : (
-                          <span className="text-muted-foreground/70">No active version</span>
+                          <span className="flex items-center gap-1.5">
+                            Latest: <StatusBadge status={latest.status} /> v{latest.version}
+                          </span>
                         )}
                         <span>·</span>
                         <span>{latest.rulesCount || 0} rule{latest.rulesCount !== 1 ? 's' : ''}</span>

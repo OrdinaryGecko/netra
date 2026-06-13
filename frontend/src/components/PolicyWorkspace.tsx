@@ -15,10 +15,15 @@ import { RulesTable } from './RulesTable';
 import { RuleEditorDialog } from './RuleEditorDialog';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 
 export function PolicyWorkspace() {
   const [editingRule, setEditingRule] = useState<Rule | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [cloneOpen, setCloneOpen] = useState(false);
+  const [cloneVersionName, setCloneVersionName] = useState('');
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { projectId, versionId } = useParams<{ projectId: string; versionId: string }>();
@@ -50,10 +55,13 @@ export function PolicyWorkspace() {
   });
 
   const cloneMutation = useMutation({
-    mutationFn: (policyVersion: PolicyVersion) => clonePolicyVersion(policyVersion, projectId),
+    mutationFn: ({ policyVersion, versionName }: { policyVersion: PolicyVersion; versionName?: string }) =>
+      clonePolicyVersion(policyVersion, projectId, versionName || undefined),
     onSuccess: async (policyVersion) => {
       navigate(`/projects/${projectId}/policy/${policyVersion.id}`);
       await refreshWorkspace();
+      setCloneOpen(false);
+      setCloneVersionName('');
       toast.success('New draft version created');
     },
     onError: (error: Error) => toast.error(error.message),
@@ -99,7 +107,13 @@ export function PolicyWorkspace() {
   };
 
   const handleClone = () => {
-    if (version) cloneMutation.mutate(version);
+    if (!version) return;
+    setCloneVersionName(`${version.version}-draft`);
+    setCloneOpen(true);
+  };
+
+  const handleCloneConfirm = () => {
+    if (version) cloneMutation.mutate({ policyVersion: version, versionName: cloneVersionName.trim() || undefined });
   };
 
   const handleToggleRule = (id: string) => {
@@ -169,6 +183,31 @@ export function PolicyWorkspace() {
         rule={editingRule}
         readOnly={!isDraft}
       />
+      <Dialog open={cloneOpen} onOpenChange={setCloneOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-mono">Clone to new draft</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label className="font-mono text-xs uppercase tracking-wider">Version name</Label>
+            <Input
+              value={cloneVersionName}
+              onChange={(e) => setCloneVersionName(e.target.value)}
+              placeholder="e.g. 2, v2-safety, hotfix-1"
+              className="font-mono text-sm"
+              disabled={cloneMutation.isPending}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCloneOpen(false)} className="font-mono text-xs" disabled={cloneMutation.isPending}>
+              Cancel
+            </Button>
+            <Button onClick={handleCloneConfirm} disabled={cloneMutation.isPending} className="font-mono text-xs">
+              {cloneMutation.isPending ? 'Cloning...' : 'Clone'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
