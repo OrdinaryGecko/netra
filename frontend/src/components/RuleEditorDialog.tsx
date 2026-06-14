@@ -260,6 +260,32 @@ export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false
               )}
             </div>
           )}
+          {form.kind === 'max_message_chars' && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Max characters</Label>
+              <Input
+                type="number"
+                min={1}
+                value={Number(parsedConfig.max || 4000)}
+                onChange={(e) => updateConfig({ max: parseInt(e.target.value) || 4000 })}
+                className="font-mono text-xs"
+                disabled={readOnly}
+              />
+            </div>
+          )}
+          {form.kind === 'keyword_detector' && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Keywords</Label>
+              <Textarea
+                value={Array.isArray(parsedConfig.keywords) ? (parsedConfig.keywords as string[]).join('\n') : ''}
+                onChange={(e) => updateConfig({ keywords: e.target.value.split('\n').filter((k) => k.trim()) })}
+                placeholder="One keyword per line"
+                className="font-mono text-xs min-h-[80px]"
+                disabled={readOnly}
+              />
+              <p className="text-[10px] font-mono text-muted-foreground">One keyword per line, case-insensitive matching</p>
+            </div>
+          )}
           {form.kind === 'keyword_detector' && form.action === 'mask' && (
             <div className="space-y-1.5">
               <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Replacement word</Label>
