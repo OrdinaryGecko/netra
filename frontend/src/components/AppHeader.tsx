@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ThemeToggle } from './ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Shield, LogOut, ChevronRight, Building2, FolderKanban } from 'lucide-react';
+import { Shield, LogOut, ChevronRight, Building2, FolderKanban, Users } from 'lucide-react';
 import { useAuth, usePermissions } from '@/contexts/AuthContext';
 import {
   DropdownMenu,
@@ -21,7 +21,7 @@ interface AppHeaderProps {
 
 export function AppHeader({ currentProject, trailing }: AppHeaderProps) {
   const { signOut, organization, user, projects } = useAuth();
-  const { role } = usePermissions();
+  const { role, canManage } = usePermissions();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -94,6 +94,12 @@ export function AppHeader({ currentProject, trailing }: AppHeaderProps) {
             <Badge variant="outline" className="hidden sm:inline-flex font-mono text-[10px] uppercase">
               {role}
             </Badge>
+          )}
+          {canManage && (
+            <Button variant="ghost" size="sm" onClick={() => navigate('/members')} className="font-mono text-xs gap-1.5">
+              <Users className="h-3.5 w-3.5" />
+              Members
+            </Button>
           )}
           <ThemeToggle />
           <Button variant="ghost" size="sm" onClick={handleSignOut} className="font-mono text-xs gap-1.5">

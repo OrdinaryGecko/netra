@@ -9,6 +9,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import SignIn from "./pages/SignIn";
 import Policies from "./pages/Policies";
 import Projects from "./pages/Projects";
+import Members from "./pages/Members";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
@@ -25,6 +26,7 @@ const App = () => (
             <Routes>
               <Route path="/sign-in" element={<SignIn />} />
               <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
+              <Route path="/members" element={<ProtectedRoute><Members /></ProtectedRoute>} />
               <Route path="/projects/:projectId/policies" element={<ProtectedRoute><Policies /></ProtectedRoute>} />
               <Route path="/projects/:projectId/policy/:versionId" element={<ProtectedRoute><Index /></ProtectedRoute>} />
               <Route path="/policies" element={<Navigate to="/projects" replace />} />

@@ -515,3 +515,33 @@ export async function updatePolicyVersion(policyVersionId: string, params: {
   });
   return mapPolicyVersion(payload);
 }
+
+// Member management
+export type MemberResponse = {
+  id: number;
+  role: string;
+  created_at: string;
+  user: { id: number; email: string; name: string };
+};
+
+export async function fetchMembers(): Promise<MemberResponse[]> {
+  return request<MemberResponse[]>("/v1/admin/memberships");
+}
+
+export async function inviteMember(params: { email: string; name?: string; role: string }): Promise<MemberResponse> {
+  return request<MemberResponse>("/v1/admin/memberships", {
+    method: "POST",
+    body: { membership: params },
+  });
+}
+
+export async function updateMemberRole(membershipId: number, role: string): Promise<MemberResponse> {
+  return request<MemberResponse>(`/v1/admin/memberships/${membershipId}`, {
+    method: "PATCH",
+    body: { membership: { role } },
+  });
+}
+
+export async function removeMember(membershipId: number): Promise<void> {
+  await request(`/v1/admin/memberships/${membershipId}`, { method: "DELETE" });
+}
