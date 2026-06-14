@@ -44,7 +44,7 @@ rules = [
   },
   {
     name: "prompt injection keywords",
-    kind: "keyword_blocklist",
+    kind: "keyword_detector",
     stage: "input",
     action: "block",
     priority: 20,
@@ -79,15 +79,19 @@ policy_version.publish! unless policy_version.status == "active"
 api_key = client_application.api_keys.find_by(name: "Seeded development key")
 unless api_key
   api_key, plaintext = ApiKey.issue!(client_application:, project:, name: "Seeded development key")
-  puts "Seeded API key: #{plaintext}"
+  puts "Seeded runtime API key: #{plaintext}"
 else
   api_key.update!(project:) if api_key.project != project
 end
 
-admin_key = client_application.api_keys.find_by(name: "Seeded admin key")
-unless admin_key
-  admin_key, plaintext = ApiKey.issue!(client_application:, project:, name: "Seeded admin key", access_level: "admin")
-  puts "Seeded admin API key: #{plaintext}"
-else
-  admin_key.update!(project:) if admin_key.project != project
+# Default user with owner role
+user = User.find_or_create_by!(email: "admin@netra.local") do |u|
+  u.name = "Admin"
+  u.password = "password"
 end
+
+Membership.find_or_create_by!(user: user, organization: organization) do |m|
+  m.role = "owner"
+end
+
+puts "Seeded user: admin@netra.local / password"

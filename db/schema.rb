@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_08_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_14_100200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -95,6 +95,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_100000) do
     t.index ["trace_id"], name: "index_guardrail_requests_on_trace_id", unique: true
   end
 
+  create_table "memberships", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "organization_id", null: false
+    t.string "role", default: "viewer", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["organization_id"], name: "index_memberships_on_organization_id"
+    t.index ["user_id", "organization_id"], name: "index_memberships_on_user_id_and_organization_id", unique: true
+    t.index ["user_id"], name: "index_memberships_on_user_id"
+  end
+
   create_table "organizations", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "name", null: false
@@ -173,6 +184,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_100000) do
     t.index ["policy_version_id"], name: "index_rules_on_policy_version_id"
   end
 
+  create_table "sessions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.string "ip_address"
+    t.datetime "last_active_at"
+    t.string "token_digest", null: false
+    t.datetime "updated_at", null: false
+    t.string "user_agent"
+    t.bigint "user_id", null: false
+    t.index ["token_digest"], name: "index_sessions_on_token_digest", unique: true
+    t.index ["user_id"], name: "index_sessions_on_user_id"
+  end
+
+  create_table "users", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "email", null: false
+    t.string "name", null: false
+    t.string "password_digest", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email"], name: "index_users_on_email", unique: true
+  end
+
   add_foreign_key "agents", "client_applications"
   add_foreign_key "agents", "projects"
   add_foreign_key "api_keys", "client_applications"
@@ -183,6 +216,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_100000) do
   add_foreign_key "guardrail_requests", "client_applications"
   add_foreign_key "guardrail_requests", "projects"
   add_foreign_key "guardrail_requests", "provider_configs"
+  add_foreign_key "memberships", "organizations"
+  add_foreign_key "memberships", "users"
   add_foreign_key "policy_sets", "client_applications"
   add_foreign_key "policy_sets", "projects"
   add_foreign_key "policy_versions", "policy_sets"
@@ -190,4 +225,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_100000) do
   add_foreign_key "provider_configs", "client_applications"
   add_foreign_key "provider_configs", "projects"
   add_foreign_key "rules", "policy_versions"
+  add_foreign_key "sessions", "users"
 end

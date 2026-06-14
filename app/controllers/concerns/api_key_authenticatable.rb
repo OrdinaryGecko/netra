@@ -4,23 +4,10 @@ module ApiKeyAuthenticatable
   private
 
   def authenticate_api_key!
-    authenticate_with_access_levels!(*ApiKey::ACCESS_LEVELS)
-  end
-
-  def authenticate_admin_api_key!
-    authenticate_with_access_levels!("admin")
-  end
-
-  def authenticate_with_access_levels!(*access_levels)
-    api_key = authenticate_from_header || authenticate_from_session(access_levels)
+    api_key = authenticate_from_api_key_header
 
     unless api_key
       render_error("unauthorized", status: :unauthorized)
-      return
-    end
-
-    unless access_levels.include?(api_key.access_level)
-      render_error("forbidden", status: :forbidden)
       return
     end
 
@@ -28,7 +15,7 @@ module ApiKeyAuthenticatable
     Current.project = requested_project_context(api_key) || api_key.project_context
   end
 
-  def authenticate_from_header
+  def authenticate_from_api_key_header
     token = request.headers["X-Api-Key"].to_s
     token = bearer_token if token.blank?
     return nil if token.blank?
@@ -42,16 +29,6 @@ module ApiKeyAuthenticatable
     return nil unless scheme&.casecmp("Bearer")&.zero?
 
     token.to_s
-  end
-
-  def authenticate_from_session(access_levels)
-    return nil unless respond_to?(:session)
-    return nil unless access_levels.include?("admin")
-
-    ApiKey.active.find_by(
-      id: session[:admin_api_key_id],
-      access_level: "admin"
-    )
   end
 
   def requested_project_context(api_key)

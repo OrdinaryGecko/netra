@@ -12,6 +12,7 @@ gem "stimulus-rails"
 gem "turbo-rails"
 gem "json_schemer"
 gem "rack-cors"
+gem "bcrypt", "~> 3.1"
 
 gem "tzinfo-data", platforms: %i[ windows jruby ]
 gem "bootsnap", require: false

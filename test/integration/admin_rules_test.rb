@@ -1,11 +1,15 @@
 require "test_helper"
 
 class AdminRulesTest < ActionDispatch::IntegrationTest
+  include AdminAuthHelper
+
   setup do
-    @client_application = ClientApplication.create!(name: "Test App", key: "test-app")
-    @policy_set = @client_application.policy_sets.create!(name: "default", environment: "test")
+    @user, @organization = create_admin_user!
+    @project = @organization.projects.create!(name: "Test Project", key: "test-app")
+    @client_application = @project.client_applications.create!(name: "Test App", key: "test-app")
+    @policy_set = @client_application.policy_sets.create!(name: "default", environment: "test", project: @project)
     @policy_version = @policy_set.policy_versions.create!(version: "1", status: "draft")
-    _, @admin_key = ApiKey.issue!(client_application: @client_application, name: "Admin key", access_level: "admin")
+    @headers = admin_session_headers(@user)
   end
 
   test "creates updates and destroys a rule" do
@@ -23,7 +27,7 @@ class AdminRulesTest < ActionDispatch::IntegrationTest
         }
       },
       as: :json,
-      headers: { "X-Api-Key" => @admin_key }
+      headers: @headers
 
     assert_response :created
     created = JSON.parse(response.body)
@@ -37,14 +41,14 @@ class AdminRulesTest < ActionDispatch::IntegrationTest
         }
       },
       as: :json,
-      headers: { "X-Api-Key" => @admin_key }
+      headers: @headers
 
     assert_response :success
     updated = JSON.parse(response.body)
     assert_equal "mask-sensitive-output", updated["name"]
     assert_equal 5, updated["priority"]
 
-    delete "/v1/admin/rules/#{created["id"]}", headers: { "X-Api-Key" => @admin_key }
+    delete "/v1/admin/rules/#{created["id"]}", headers: @headers
     assert_response :no_content
     assert_not Rule.exists?(created["id"])
   end
@@ -66,7 +70,7 @@ class AdminRulesTest < ActionDispatch::IntegrationTest
         }
       },
       as: :json,
-      headers: { "X-Api-Key" => @admin_key }
+      headers: @headers
 
     assert_response :unprocessable_entity
   end

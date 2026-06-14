@@ -1,10 +1,14 @@
 require "test_helper"
 
 class AdminPolicyVersionsTest < ActionDispatch::IntegrationTest
+  include AdminAuthHelper
+
   setup do
-    @client_application = ClientApplication.create!(name: "Test App", key: "test-app")
-    @policy_set = @client_application.policy_sets.create!(name: "default", environment: "test")
-    _, @admin_key = ApiKey.issue!(client_application: @client_application, name: "Admin key", access_level: "admin")
+    @user, @organization = create_admin_user!
+    @project = @organization.projects.create!(name: "Test Project", key: "test-app")
+    @client_application = @project.client_applications.create!(name: "Test App", key: "test-app")
+    @policy_set = @client_application.policy_sets.create!(name: "default", environment: "test", project: @project)
+    @headers = admin_session_headers(@user)
     @policy_version = @policy_set.policy_versions.create!(
       version: "1",
       status: "draft",
@@ -31,7 +35,7 @@ class AdminPolicyVersionsTest < ActionDispatch::IntegrationTest
         }
       },
       as: :json,
-      headers: { "X-Api-Key" => @admin_key }
+      headers: @headers
 
     assert_response :created
     created = JSON.parse(response.body)
@@ -44,7 +48,7 @@ class AdminPolicyVersionsTest < ActionDispatch::IntegrationTest
         }
       },
       as: :json,
-      headers: { "X-Api-Key" => @admin_key }
+      headers: @headers
 
     assert_response :success
     updated = JSON.parse(response.body)
@@ -59,7 +63,7 @@ class AdminPolicyVersionsTest < ActionDispatch::IntegrationTest
         ]
       },
       as: :json,
-      headers: { "X-Api-Key" => @admin_key }
+      headers: @headers
 
     assert_response :success
     body = JSON.parse(response.body)
@@ -89,7 +93,7 @@ class AdminPolicyVersionsTest < ActionDispatch::IntegrationTest
         ]
       },
       as: :json,
-      headers: { "X-Api-Key" => @admin_key }
+      headers: @headers
 
     assert_response :success
     body = JSON.parse(response.body)
@@ -109,7 +113,7 @@ class AdminPolicyVersionsTest < ActionDispatch::IntegrationTest
         ]
       },
       as: :json,
-      headers: { "X-Api-Key" => @admin_key }
+      headers: @headers
 
     assert_response :success
     body = JSON.parse(response.body)
@@ -132,7 +136,7 @@ class AdminPolicyVersionsTest < ActionDispatch::IntegrationTest
         }
       },
       as: :json,
-      headers: { "X-Api-Key" => @admin_key }
+      headers: @headers
 
     assert_response :created
     body = JSON.parse(response.body)
@@ -153,7 +157,7 @@ class AdminPolicyVersionsTest < ActionDispatch::IntegrationTest
         }
       },
       as: :json,
-      headers: { "X-Api-Key" => @admin_key }
+      headers: @headers
 
     assert_response :unprocessable_entity
   end
@@ -171,7 +175,7 @@ class AdminPolicyVersionsTest < ActionDispatch::IntegrationTest
 
     post "/v1/admin/policy_versions/#{@policy_version.id}/publish",
       as: :json,
-      headers: { "X-Api-Key" => @admin_key }
+      headers: @headers
 
     assert_response :unprocessable_entity
     body = JSON.parse(response.body)

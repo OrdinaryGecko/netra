@@ -1,10 +1,11 @@
 require "test_helper"
 
 class AdminAuthenticationTest < ActionDispatch::IntegrationTest
+  include AdminAuthHelper
+
   setup do
-    @client_application = ClientApplication.create!(name: "Test App", key: "test-app")
-    _, @runtime_key = ApiKey.issue!(client_application: @client_application, name: "Runtime key")
-    _, @admin_key = ApiKey.issue!(client_application: @client_application, name: "Admin key", access_level: "admin")
+    @user, @organization = create_admin_user!
+    @organization.projects.create!(name: "Test Project", key: "test-app")
   end
 
   test "rejects unauthenticated admin requests" do
@@ -13,14 +14,8 @@ class AdminAuthenticationTest < ActionDispatch::IntegrationTest
     assert_response :unauthorized
   end
 
-  test "rejects runtime keys for admin endpoints" do
-    get "/v1/admin/policy_sets", headers: { "X-Api-Key" => @runtime_key }
-
-    assert_response :forbidden
-  end
-
-  test "allows admin keys for admin endpoints" do
-    get "/v1/admin/policy_sets", headers: { "X-Api-Key" => @admin_key }
+  test "allows authenticated user for admin endpoints" do
+    get "/v1/admin/policy_sets", headers: admin_session_headers(@user)
 
     assert_response :success
   end
