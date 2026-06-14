@@ -1,6 +1,7 @@
 module V1
   module Admin
     class BaseController < V1::BaseController
+      include Authorizable
       before_action :authenticate_admin!
 
       private

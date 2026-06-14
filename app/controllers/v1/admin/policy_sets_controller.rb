@@ -1,6 +1,9 @@
 module V1
   module Admin
     class PolicySetsController < Admin::BaseController
+      before_action -> { authorize!(:read_policies) }, only: [:index, :show]
+      before_action -> { authorize!(:write_policies) }, only: [:create, :update]
+
       def index
         policy_sets = current_project.policy_sets.includes(policy_versions: :rules)
         policy_sets = policy_sets.where(environment: params[:environment]) if params[:environment].present?

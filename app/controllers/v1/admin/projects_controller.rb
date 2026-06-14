@@ -1,6 +1,11 @@
 module V1
   module Admin
     class ProjectsController < Admin::BaseController
+      before_action -> { authorize!(:read_policies) }, only: [:index, :show]
+      before_action -> { authorize!(:manage_projects) }, only: [:create]
+      before_action -> { authorize!(:edit_project) }, only: [:update]
+      before_action -> { authorize!(:dry_run) }, only: [:dry_run]
+
       def index
         projects = current_organization.projects.includes(:policy_sets).order(:name)
         render json: projects.map { |project| serialize_project(project) }

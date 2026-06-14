@@ -1,6 +1,8 @@
 module V1
   module Admin
     class RulesController < Admin::BaseController
+      before_action -> { authorize!(:write_policies) }
+
       def create
         policy_version = policy_versions_scope.find(rule_params[:policy_version_id])
         rule = policy_version.rules.new(rule_params.except(:policy_version_id))

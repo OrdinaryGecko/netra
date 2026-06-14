@@ -1,6 +1,11 @@
 module V1
   module Admin
     class PolicyVersionsController < Admin::BaseController
+      before_action -> { authorize!(:read_policies) }, only: [:show]
+      before_action -> { authorize!(:write_policies) }, only: [:create, :update, :clone]
+      before_action -> { authorize!(:publish_policies) }, only: [:publish]
+      before_action -> { authorize!(:dry_run) }, only: [:test]
+
       def show
         policy_version = policy_versions_scope.includes(:rules).find(params[:id])
         render json: serialize_policy_version(policy_version)
