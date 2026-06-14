@@ -1,5 +1,6 @@
 module V1
   class AuthController < V1::BaseController
+    skip_forgery_protection
     before_action :authenticate_user!, only: [:logout, :me]
 
     def login

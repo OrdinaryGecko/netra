@@ -137,11 +137,6 @@ export default function Projects() {
           )}
         </div>
 
-        <div className="border-t pt-6 mt-8">
-          <p className="text-xs font-mono text-muted-foreground">
-            Members, roles, and organization settings — coming soon.
-          </p>
-        </div>
       </div>
 
       <Dialog

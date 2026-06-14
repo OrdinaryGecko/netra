@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Shield, ArrowRight } from 'lucide-react';
 
 export default function SignIn() {
-  const [key, setKey] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const { signIn } = useAuth();
@@ -16,14 +17,14 @@ export default function SignIn() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!key.trim()) {
-      setError('API key is required');
+    if (!email.trim() || !password) {
+      setError('Email and password are required');
       return;
     }
 
     try {
       setSubmitting(true);
-      await signIn(key.trim());
+      await signIn(email.trim(), password);
       navigate('/projects');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to sign in');
@@ -40,25 +41,34 @@ export default function SignIn() {
             <Shield className="h-6 w-6 text-primary" />
           </div>
           <CardTitle className="text-2xl font-bold font-mono">Netra</CardTitle>
-          <CardDescription>Enter your admin API key to access the guardrails console.</CardDescription>
+          <CardDescription>Sign in to access the guardrails console.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="api-key" className="font-mono text-xs uppercase tracking-wider">
-                Admin API Key
-              </Label>
+              <Label htmlFor="email" className="font-mono text-xs uppercase tracking-wider">Email</Label>
               <Input
-                id="api-key"
-                type="password"
-                placeholder="sk-netra-..."
-                value={key}
-                onChange={(e) => { setKey(e.target.value); setError(''); }}
+                id="email"
+                type="email"
+                placeholder="you@company.com"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setError(''); }}
                 className="font-mono"
                 autoFocus
               />
-              {error && <p className="text-sm text-destructive">{error}</p>}
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="password" className="font-mono text-xs uppercase tracking-wider">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                className="font-mono"
+              />
+            </div>
+            {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" className="w-full font-mono" size="lg" disabled={submitting}>
               {submitting ? 'Signing In...' : 'Sign In'}
               <ArrowRight className="ml-2 h-4 w-4" />

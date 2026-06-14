@@ -42,13 +42,9 @@ export interface Membership {
 }
 
 export interface AdminSession {
-  authenticated: boolean;
-  apiKey: { id: number; name: string };
-  clientApplication: { id: number; name: string; key: string };
-  project?: Project | null;
-  organization?: Organization | null;
-  user?: User | null;
-  membership?: Membership | null;
+  user: User;
+  organization: Organization;
+  membership: Membership;
 }
 
 export interface Rule {

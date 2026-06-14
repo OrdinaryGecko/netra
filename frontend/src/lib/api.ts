@@ -1,16 +1,4 @@
-import { AdminSession, ApiErrorPayload, DryRunResult, PolicySetSummary, PolicyVersion, Project, Rule } from "./types";
-
-type SessionPayload = {
-  authenticated: boolean;
-  api_key: { id: number; name: string };
-  client_application: { id: number; name: string; key: string };
-  project?: {
-    id: number;
-    name: string;
-    key: string;
-    organization: { id: number; name: string; slug: string };
-  } | null;
-};
+import { ApiErrorPayload, DryRunResult, PolicySetSummary, PolicyVersion, Project, Rule } from "./types";
 
 type BackendProject = {
   id: number;
@@ -70,27 +58,26 @@ type BackendPolicyVersion = {
 type RequestOptions = {
   method?: string;
   body?: unknown;
-  apiKey?: string | null;
   projectId?: string | null;
 };
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
-const ADMIN_API_KEY_STORAGE_KEY = "netra.adminApiKey";
+const SESSION_TOKEN_KEY = "netra.sessionToken";
 
 function apiUrl(path: string) {
   return new URL(path, API_BASE_URL).toString();
 }
 
-export function storedAdminApiKey() {
-  return window.localStorage.getItem(ADMIN_API_KEY_STORAGE_KEY);
+export function storedSessionToken() {
+  return window.localStorage.getItem(SESSION_TOKEN_KEY);
 }
 
-export function storeAdminApiKey(apiKey: string) {
-  window.localStorage.setItem(ADMIN_API_KEY_STORAGE_KEY, apiKey);
+export function storeSessionToken(token: string) {
+  window.localStorage.setItem(SESSION_TOKEN_KEY, token);
 }
 
-export function clearStoredAdminApiKey() {
-  window.localStorage.removeItem(ADMIN_API_KEY_STORAGE_KEY);
+export function clearSessionToken() {
+  window.localStorage.removeItem(SESSION_TOKEN_KEY);
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -100,8 +87,8 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
 
-  const apiKey = options.apiKey === undefined ? storedAdminApiKey() : options.apiKey;
-  if (apiKey) headers["X-Api-Key"] = apiKey;
+  const token = storedSessionToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
   if (options.projectId) headers["X-Netra-Project-Id"] = options.projectId;
 
   const response = await fetch(apiUrl(path), {
@@ -171,64 +158,52 @@ function mapProject(project: BackendProject): Project {
   };
 }
 
-function mapSession(payload: SessionPayload): AdminSession {
-  return {
-    authenticated: payload.authenticated,
-    apiKey: payload.api_key,
-    clientApplication: payload.client_application,
-    project: payload.project
-      ? mapProject({
-          id: payload.project.id,
-          name: payload.project.name,
-          key: payload.project.key,
-          fail_mode: "open",
-          active: true,
-          organization: payload.project.organization,
-          policy_sets_count: 0,
-        })
-      : null,
-    organization: payload.project
-      ? {
-          id: String(payload.project.organization.id),
-          name: payload.project.organization.name,
-          slug: payload.project.organization.slug,
-        }
-      : null,
-    user: payload.project
-      ? {
-          id: String(payload.api_key.id),
-          email: `${payload.api_key.name.toLowerCase().replace(/\s+/g, "-")}@netra.local`,
-          name: payload.api_key.name,
-        }
-      : null,
-    membership: payload.project
-      ? {
-          id: `membership-${payload.api_key.id}`,
-          userId: String(payload.api_key.id),
-          organizationId: String(payload.project.organization.id),
-          role: "owner",
-        }
-      : null,
+
+type AuthResponse = {
+  token: string;
+  user: {
+    id: number;
+    email: string;
+    name: string;
+    membership: {
+      id: number;
+      organization_id: number;
+      organization_name: string;
+      organization_slug: string;
+      role: string;
+    } | null;
   };
-}
+  expires_at: string;
+};
 
-export async function getSession() {
-  const payload = await request<SessionPayload>("/v1/admin/session");
-  return mapSession(payload);
-}
+export async function login(email: string, password: string): Promise<AuthResponse> {
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+  };
 
-export async function createSession(apiKey: string) {
-  const payload = await request<SessionPayload>("/v1/admin/session", {
+  const response = await fetch(apiUrl("/v1/auth/login"), {
     method: "POST",
-    apiKey,
-    body: { api_key: apiKey },
+    headers,
+    body: JSON.stringify({ email, password }),
   });
-  return mapSession(payload);
+
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as ApiErrorPayload | null;
+    throw new Error(payload?.details?.join(", ") || payload?.error || "Login failed");
+  }
+
+  return response.json() as Promise<AuthResponse>;
 }
 
-export async function destroySession() {
-  clearStoredAdminApiKey();
-  return Promise.resolve();
+export async function logout(): Promise<void> {
+  await request("/v1/auth/logout", { method: "DELETE" }).catch(() => {});
+  clearSessionToken();
+}
+
+export async function getMe(): Promise<AuthResponse["user"]> {
+  const payload = await request<{ user: AuthResponse["user"] }>("/v1/auth/me");
+  return payload.user;
 }
 
 export async function fetchPolicySets(): Promise<PolicySetSummary[]> {

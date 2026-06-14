@@ -1,17 +1,16 @@
 import { createContext, useContext, useEffect, useMemo, useState, ReactNode, useCallback } from "react";
-import { clearStoredAdminApiKey, createSession, destroySession, fetchProjects, getSession, storedAdminApiKey, storeAdminApiKey } from "@/lib/api";
+import { clearSessionToken, fetchProjects, getMe, login, logout, storedSessionToken, storeSessionToken } from "@/lib/api";
 import { AdminSession, Membership, Organization, Project, User } from "@/lib/types";
 
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   session: AdminSession | null;
-  apiKey: string | null;
   user: User | null;
   organization: Organization | null;
   membership: Membership | null;
   projects: Project[];
-  signIn: (key: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProjects: () => Promise<void>;
 }
@@ -24,40 +23,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AdminSession | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
 
-  const hydrateSession = useCallback(async (payload: AdminSession) => {
-    setSession(payload);
+  const hydrateFromUser = useCallback(async (userData: { id: number; email: string; name: string; membership: { id: number; organization_id: number; organization_name: string; organization_slug: string; role: string } | null }) => {
+    if (!userData.membership) throw new Error("No organization membership");
+
+    const sess: AdminSession = {
+      user: { id: String(userData.id), email: userData.email, name: userData.name },
+      organization: {
+        id: String(userData.membership.organization_id),
+        name: userData.membership.organization_name,
+        slug: userData.membership.organization_slug,
+      },
+      membership: {
+        id: String(userData.membership.id),
+        userId: String(userData.id),
+        organizationId: String(userData.membership.organization_id),
+        role: userData.membership.role as Membership["role"],
+      },
+    };
+
+    setSession(sess);
     setIsAuthenticated(true);
     setProjects(await fetchProjects());
   }, []);
 
   useEffect(() => {
-    if (!storedAdminApiKey()) {
-      setSession(null);
-      setProjects([]);
-      setIsAuthenticated(false);
+    if (!storedSessionToken()) {
       setIsLoading(false);
       return;
     }
 
-    getSession()
-      .then(hydrateSession)
+    getMe()
+      .then(hydrateFromUser)
       .catch(() => {
-        clearStoredAdminApiKey();
+        clearSessionToken();
         setSession(null);
         setProjects([]);
         setIsAuthenticated(false);
       })
       .finally(() => setIsLoading(false));
-  }, [hydrateSession]);
+  }, [hydrateFromUser]);
 
-  const signIn = useCallback(async (key: string) => {
-    const payload = await createSession(key);
-    storeAdminApiKey(key);
-    await hydrateSession(payload);
-  }, [hydrateSession]);
+  const signIn = useCallback(async (email: string, password: string) => {
+    const response = await login(email, password);
+    storeSessionToken(response.token);
+    await hydrateFromUser(response.user);
+  }, [hydrateFromUser]);
 
   const signOut = useCallback(async () => {
-    await destroySession();
+    await logout();
     setSession(null);
     setProjects([]);
     setIsAuthenticated(false);
@@ -67,14 +80,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProjects(await fetchProjects());
   }, []);
 
-  const organization = session?.organization || session?.project?.organization || null;
+  const organization = session?.organization || null;
   const user = session?.user || null;
   const membership = session?.membership || null;
-  const apiKey = storedAdminApiKey();
 
   const value = useMemo(
     () => ({
-      apiKey,
       isAuthenticated,
       isLoading,
       session,
@@ -86,15 +97,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       refreshProjects,
     }),
-    [apiKey, isAuthenticated, isLoading, session, user, organization, membership, projects, signIn, signOut, refreshProjects]
+    [isAuthenticated, isLoading, session, user, organization, membership, projects, signIn, signOut, refreshProjects]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useCurrentProject(projectId?: string): Project | null {
-  const { projects, session } = useAuth();
-  if (!projectId) return session?.project || null;
+  const { projects } = useAuth();
+  if (!projectId) return projects[0] || null;
   return projects.find((project) => project.id === projectId) ?? null;
 }
 
