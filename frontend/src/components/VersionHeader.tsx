@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { ArrowLeft, Copy, Rocket, FileText, Pencil, Check, X } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AppHeader } from './AppHeader';
-import { useCurrentProject } from '@/contexts/AuthContext';
+import { useCurrentProject, usePermissions } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 interface VersionHeaderProps {
@@ -22,6 +22,7 @@ export function VersionHeader({ version, onPublish, onClone }: VersionHeaderProp
   const navigate = useNavigate();
   const { projectId } = useParams<{ projectId: string }>();
   const project = useCurrentProject(projectId);
+  const { canEdit } = usePermissions();
   const backTo = projectId ? `/projects/${projectId}/policies` : '/projects';
   const queryClient = useQueryClient();
 
@@ -88,7 +89,7 @@ export function VersionHeader({ version, onPublish, onClone }: VersionHeaderProp
                   <span className="text-xs text-muted-foreground">
                     Updated {new Date(version.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                   </span>
-                  {isDraft && (
+                  {isDraft && canEdit && (
                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={startEditing}>
                       <Pencil className="h-3 w-3 text-muted-foreground" />
                     </Button>
@@ -103,7 +104,7 @@ export function VersionHeader({ version, onPublish, onClone }: VersionHeaderProp
               <Copy className="h-3.5 w-3.5 mr-1.5" />
               Clone
             </Button>
-            {isDraft && (
+            {isDraft && canEdit && (
               <Button size="sm" onClick={onPublish}>
                 <Rocket className="h-3.5 w-3.5 mr-1.5" />
                 Publish

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useAuth, useCurrentProject } from '@/contexts/AuthContext';
+import { useAuth, useCurrentProject, usePermissions } from '@/contexts/AuthContext';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,6 +33,7 @@ export default function Policies() {
   const { projectId } = useParams<{ projectId: string }>();
   const project = useCurrentProject(projectId);
   const { projects } = useAuth();
+  const { canEdit } = usePermissions();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -152,10 +153,12 @@ export default function Policies() {
               </p>
             </div>
           </div>
-          <Button onClick={() => setCreateOpen(true)} className="font-mono text-xs gap-1.5 shrink-0">
-            <Plus className="h-3.5 w-3.5" />
-            New Policy
-          </Button>
+          {canEdit && (
+            <Button onClick={() => setCreateOpen(true)} className="font-mono text-xs gap-1.5 shrink-0">
+              <Plus className="h-3.5 w-3.5" />
+              New Policy
+            </Button>
+          )}
         </div>
 
         <Tabs defaultValue="sets" className="w-full">
@@ -247,14 +250,16 @@ export default function Policies() {
                           </div>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={(e) => { e.stopPropagation(); openEditSet(policy); }}
-                          >
-                            <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-                          </Button>
+                          {canEdit && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => { e.stopPropagation(); openEditSet(policy); }}
+                            >
+                              <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                            </Button>
+                          )}
                           <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
                         </div>
                       </div>

@@ -114,3 +114,25 @@ export function useAuth() {
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }
+
+const ROLE_LEVELS: Record<string, number> = {
+  owner: 5,
+  admin: 4,
+  editor: 3,
+  viewer: 2,
+  auditor: 1,
+};
+
+export function usePermissions() {
+  const { membership } = useAuth();
+  const role = membership?.role || "viewer";
+  const level = ROLE_LEVELS[role] || 0;
+
+  return {
+    role,
+    canManage: level >= 4,      // owner, admin
+    canEdit: level >= 3,        // owner, admin, editor
+    canView: level >= 2,        // owner, admin, editor, viewer
+    canViewLogs: level >= 1,    // all roles
+  };
+}

@@ -14,9 +14,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { createProject } from '@/lib/api';
 import { toast } from 'sonner';
+import { usePermissions } from '@/contexts/AuthContext';
 
 export default function Projects() {
   const { organization, projects, membership, refreshProjects } = useAuth();
+  const { canManage } = usePermissions();
   const navigate = useNavigate();
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -70,10 +72,12 @@ export default function Projects() {
               </div>
             </div>
           </div>
-          <Button onClick={() => setCreateOpen(true)} className="font-mono text-xs gap-1.5">
-            <Plus className="h-3.5 w-3.5" />
-            New Project
-          </Button>
+          {canManage && (
+            <Button onClick={() => setCreateOpen(true)} className="font-mono text-xs gap-1.5">
+              <Plus className="h-3.5 w-3.5" />
+              New Project
+            </Button>
+          )}
         </div>
 
         <div>
