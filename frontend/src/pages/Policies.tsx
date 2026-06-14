@@ -38,6 +38,7 @@ export default function Policies() {
 
   const [search, setSearch] = useState('');
   const [envFilter, setEnvFilter] = useState<string>('all');
+  const [enabledFilter, setEnabledFilter] = useState<string>('all');
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
@@ -100,11 +101,16 @@ export default function Policies() {
   const filtered = useMemo(() => {
     const items = policySetsQuery.data || [];
     return items.filter(
-      (policy) =>
-        policy.name.toLowerCase().includes(search.toLowerCase()) ||
-        policy.description.toLowerCase().includes(search.toLowerCase())
+      (policy) => {
+        const matchesSearch = policy.name.toLowerCase().includes(search.toLowerCase()) ||
+          policy.description.toLowerCase().includes(search.toLowerCase());
+        const hasActiveVersion = policy.policyVersions.some((v) => v.status === 'active');
+        const matchesStatus = enabledFilter === 'all'
+          || (enabledFilter === 'active' ? hasActiveVersion && policy.enabled : !hasActiveVersion || !policy.enabled);
+        return matchesSearch && matchesStatus;
+      }
     );
-  }, [policySetsQuery.data, search]);
+  }, [policySetsQuery.data, search, enabledFilter]);
 
   const latestVersion = (policy: typeof filtered[number]) =>
     policy.policyVersions[0];
@@ -198,6 +204,16 @@ export default function Policies() {
                   <SelectItem value="production" className="font-mono text-xs">Production</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={enabledFilter} onValueChange={setEnabledFilter}>
+                <SelectTrigger className="w-[130px] font-mono text-xs">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="font-mono text-xs">All</SelectItem>
+                  <SelectItem value="active" className="font-mono text-xs">Active</SelectItem>
+                  <SelectItem value="inactive" className="font-mono text-xs">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid gap-4">
@@ -214,7 +230,7 @@ export default function Policies() {
                 return (
                   <Card
                     key={policy.id}
-                    className="hover:border-primary/40 transition-colors group"
+                    className={`hover:border-primary/40 transition-colors group ${!policy.enabled ? 'opacity-50' : ''}`}
                   >
                     <CardHeader
                       className="pb-3 cursor-pointer"
@@ -271,7 +287,7 @@ export default function Policies() {
                         {!policy.enabled && (
                           <>
                             <span>·</span>
-                            <span className="text-amber-600 dark:text-amber-400">Paused for project</span>
+                            <span className="text-amber-600 dark:text-amber-400">Disabled</span>
                           </>
                         )}
                       </div>

@@ -222,7 +222,7 @@ export function PipelinePanel({ projectId }: PipelinePanelProps) {
                 </div>
                 {!set.enabled && (
                   <Badge variant="outline" className="font-mono text-[10px] uppercase">
-                    Paused
+                    Disabled
                   </Badge>
                 )}
               </div>
@@ -230,7 +230,7 @@ export function PipelinePanel({ projectId }: PipelinePanelProps) {
           </div>
           {disabledSteps.length > 0 && (
             <p className="text-xs font-mono text-muted-foreground mt-3">
-              {disabledSteps.length} paused set{disabledSteps.length !== 1 ? 's' : ''} excluded from the pipeline.
+              {disabledSteps.length} disabled set{disabledSteps.length !== 1 ? 's' : ''} excluded from the pipeline.
             </p>
           )}
         </CardContent>
