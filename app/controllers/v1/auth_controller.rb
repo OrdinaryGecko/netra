@@ -48,6 +48,34 @@ module V1
       end
     end
 
+    def forgot_password
+      user = User.find_by(email: params[:email].to_s.strip.downcase)
+
+      if user
+        token = PasswordResetToken.generate_for_user!(user)
+        Rails.logger.info "[PasswordReset] Token for #{user.email}: #{token}"
+        # In production, send email here
+      end
+
+      # Always return success to avoid email enumeration
+      render json: { message: "If an account exists with that email, a reset link has been sent." }
+    end
+
+    def reset_password
+      record = PasswordResetToken.find_by_token(params[:token].to_s)
+
+      if record.nil? || record.expired? || record.used?
+        return render json: { error: "invalid_token", details: ["Reset token is invalid or expired"] }, status: :unprocessable_entity
+      end
+
+      if record.user.update(password: params[:new_password])
+        record.use!
+        render json: { message: "Password has been reset successfully." }
+      else
+        render json: { error: "invalid_password", details: record.user.errors.full_messages }, status: :unprocessable_entity
+      end
+    end
+
     private
 
     def profile_params

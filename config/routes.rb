@@ -12,6 +12,8 @@ Rails.application.routes.draw do
     get "auth/me", to: "auth#me"
     patch "auth/profile", to: "auth#update_profile"
     patch "auth/password", to: "auth#update_password"
+    post "auth/forgot_password", to: "auth#forgot_password"
+    post "auth/reset_password", to: "auth#reset_password"
 
     namespace :admin do
       resources :projects, only: %i[index create show update] do

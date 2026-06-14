@@ -73,6 +73,11 @@ export default function SignIn() {
               {submitting ? 'Signing In...' : 'Sign In'}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
+            <div className="text-center">
+              <button type="button" onClick={() => navigate('/forgot-password')} className="text-xs font-mono text-muted-foreground hover:text-foreground transition-colors">
+                Forgot password?
+              </button>
+            </div>
           </form>
         </CardContent>
       </Card>

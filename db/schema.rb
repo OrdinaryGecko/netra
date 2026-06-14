@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_14_100200) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_14_100300) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -112,6 +112,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_14_100200) do
     t.string "slug", null: false
     t.datetime "updated_at", null: false
     t.index ["slug"], name: "index_organizations_on_slug", unique: true
+  end
+
+  create_table "password_reset_tokens", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.string "token_digest", null: false
+    t.datetime "updated_at", null: false
+    t.datetime "used_at"
+    t.bigint "user_id", null: false
+    t.index ["token_digest"], name: "index_password_reset_tokens_on_token_digest", unique: true
+    t.index ["user_id"], name: "index_password_reset_tokens_on_user_id"
   end
 
   create_table "policy_sets", force: :cascade do |t|
@@ -218,6 +229,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_14_100200) do
   add_foreign_key "guardrail_requests", "provider_configs"
   add_foreign_key "memberships", "organizations"
   add_foreign_key "memberships", "users"
+  add_foreign_key "password_reset_tokens", "users"
   add_foreign_key "policy_sets", "client_applications"
   add_foreign_key "policy_sets", "projects"
   add_foreign_key "policy_versions", "policy_sets"

@@ -11,6 +11,7 @@ import Policies from "./pages/Policies";
 import Projects from "./pages/Projects";
 import Members from "./pages/Members";
 import Profile from "./pages/Profile";
+import ForgotPassword from "./pages/ForgotPassword";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
@@ -26,6 +27,7 @@ const App = () => (
           <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <Routes>
               <Route path="/sign-in" element={<SignIn />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
               <Route path="/members" element={<ProtectedRoute><Members /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
