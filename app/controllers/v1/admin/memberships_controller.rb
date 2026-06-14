@@ -10,10 +10,12 @@ module V1
 
       def create
         user = User.find_or_initialize_by(email: invite_params[:email].to_s.strip.downcase)
+        temp_password = nil
 
         if user.new_record?
           user.name = invite_params[:name].presence || invite_params[:email].split("@").first
-          user.password = SecureRandom.hex(16)
+          temp_password = SecureRandom.hex(8)
+          user.password = temp_password
           unless user.save
             return render_error("invalid_user", status: :unprocessable_entity, details: user.errors.full_messages)
           end
@@ -22,6 +24,9 @@ module V1
         membership = current_organization.memberships.new(user: user, role: invite_params[:role] || "viewer")
 
         if membership.save
+          if temp_password
+            UserMailer.member_invite(user: user, organization: current_organization, inviter: current_user, temp_password: temp_password).deliver_later
+          end
           render json: serialize_membership(membership), status: :created
         else
           render_error("invalid_membership", status: :unprocessable_entity, details: membership.errors.full_messages)

@@ -53,8 +53,7 @@ module V1
 
       if user
         token = PasswordResetToken.generate_for_user!(user)
-        Rails.logger.info "[PasswordReset] Token for #{user.email}: #{token}"
-        # In production, send email here
+        UserMailer.password_reset(user: user, token: token).deliver_later
       end
 
       # Always return success to avoid email enumeration
