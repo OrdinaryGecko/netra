@@ -9,6 +9,12 @@ module V1
       end
 
       def create
+        invited_role = invite_params[:role] || "viewer"
+
+        if invited_role == "owner" && current_membership.role != "owner"
+          return render_error("forbidden", status: :forbidden, details: ["Only owners can invite other owners"])
+        end
+
         user = User.find_or_initialize_by(email: invite_params[:email].to_s.strip.downcase)
         temp_password = nil
 
@@ -21,7 +27,7 @@ module V1
           end
         end
 
-        membership = current_organization.memberships.new(user: user, role: invite_params[:role] || "viewer")
+        membership = current_organization.memberships.new(user: user, role: invited_role)
 
         if membership.save
           if temp_password
@@ -40,7 +46,16 @@ module V1
           return render_error("cannot_modify_self", status: :unprocessable_entity, details: ["Cannot change your own role"])
         end
 
-        if membership.update(role: params.dig(:membership, :role))
+        if membership.role == "owner" && current_membership.role != "owner"
+          return render_error("forbidden", status: :forbidden, details: ["Only owners can modify other owners"])
+        end
+
+        new_role = params.dig(:membership, :role)
+        if new_role == "owner" && current_membership.role != "owner"
+          return render_error("forbidden", status: :forbidden, details: ["Only owners can assign the owner role"])
+        end
+
+        if membership.update(role: new_role)
           render json: serialize_membership(membership)
         else
           render_error("invalid_membership", status: :unprocessable_entity, details: membership.errors.full_messages)
@@ -52,6 +67,10 @@ module V1
 
         if membership.user_id == current_user.id
           return render_error("cannot_modify_self", status: :unprocessable_entity, details: ["Cannot remove yourself"])
+        end
+
+        if membership.role == "owner" && current_membership.role != "owner"
+          return render_error("forbidden", status: :forbidden, details: ["Only owners can remove other owners"])
         end
 
         membership.destroy!

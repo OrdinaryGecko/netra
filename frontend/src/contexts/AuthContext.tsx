@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, ReactNode, useCallback } from "react";
-import { clearSessionToken, fetchProjects, getMe, login, logout, storedSessionToken, storeSessionToken } from "@/lib/api";
+import { clearSessionToken, fetchProjects, getMe, getOrgSlug, login, logout, storedSessionToken, storeOrgSlug, storeSessionToken } from "@/lib/api";
 import { AdminSession, Membership, Organization, Project, User } from "@/lib/types";
 
 interface AuthContextType {
@@ -66,6 +66,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = useCallback(async (email: string, password: string) => {
     const response = await login(email, password);
     storeSessionToken(response.token);
+    if (response.user.membership?.organization_slug) {
+      storeOrgSlug(response.user.membership.organization_slug);
+    }
     await hydrateFromUser(response.user);
   }, [hydrateFromUser]);
 

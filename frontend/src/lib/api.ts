@@ -63,9 +63,26 @@ type RequestOptions = {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 const SESSION_TOKEN_KEY = "netra.sessionToken";
+const ORG_SLUG_KEY = "netra.orgSlug";
 
 function apiUrl(path: string) {
   return new URL(path, API_BASE_URL).toString();
+}
+
+export function getOrgSlug(): string {
+  // Try subdomain first (e.g. acme.netra.local → acme)
+  const host = window.location.hostname;
+  const parts = host.split(".");
+  if (parts.length >= 3) {
+    const subdomain = parts[0];
+    if (subdomain !== "www" && subdomain !== "localhost") return subdomain;
+  }
+  // Fall back to stored value
+  return window.localStorage.getItem(ORG_SLUG_KEY) || "";
+}
+
+export function storeOrgSlug(slug: string) {
+  window.localStorage.setItem(ORG_SLUG_KEY, slug);
 }
 
 export function storedSessionToken() {
@@ -78,6 +95,7 @@ export function storeSessionToken(token: string) {
 
 export function clearSessionToken() {
   window.localStorage.removeItem(SESSION_TOKEN_KEY);
+  window.localStorage.removeItem(ORG_SLUG_KEY);
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -90,6 +108,9 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const token = storedSessionToken();
   if (token) headers["Authorization"] = `Bearer ${token}`;
   if (options.projectId) headers["X-Netra-Project-Id"] = options.projectId;
+
+  const orgSlug = getOrgSlug();
+  if (orgSlug) headers["X-Netra-Org-Slug"] = orgSlug;
 
   const response = await fetch(apiUrl(path), {
     method: options.method || "GET",
@@ -182,10 +203,12 @@ export async function login(email: string, password: string): Promise<AuthRespon
     "Content-Type": "application/json",
   };
 
+  const orgSlug = getOrgSlug();
+
   const response = await fetch(apiUrl("/v1/auth/login"), {
     method: "POST",
     headers,
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, org_slug: orgSlug || undefined }),
   });
 
   if (!response.ok) {

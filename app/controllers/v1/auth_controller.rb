@@ -10,11 +10,24 @@ module V1
         return render json: { error: "invalid_credentials", details: ["Invalid email or password"] }, status: :unauthorized
       end
 
+      org_slug = params[:org_slug].to_s.strip
+      if org_slug.present?
+        organization = Organization.find_by(slug: org_slug)
+        unless organization
+          return render json: { error: "invalid_organization", details: ["Organization not found"] }, status: :unauthorized
+        end
+
+        membership = user.memberships.find_by(organization: organization)
+        unless membership
+          return render json: { error: "not_a_member", details: ["You are not a member of this organization"] }, status: :unauthorized
+        end
+      end
+
       session, token = Session.create_for_user!(user, request: request)
 
       render json: {
         token: token,
-        user: serialize_user(user),
+        user: serialize_user(user, org_slug: org_slug.presence),
         expires_at: session.expires_at
       }, status: :created
     end
@@ -25,7 +38,8 @@ module V1
     end
 
     def me
-      render json: { user: serialize_user(current_user) }
+      org_slug = request.headers["X-Netra-Org-Slug"].to_s.presence
+      render json: { user: serialize_user(current_user, org_slug: org_slug) }
     end
 
     def update_profile
@@ -81,8 +95,13 @@ module V1
       params.permit(:name, :email)
     end
 
-    def serialize_user(user)
-      membership = user.memberships.includes(:organization).first
+    def serialize_user(user, org_slug: nil)
+      membership = if org_slug.present?
+        user.memberships.includes(:organization).find_by(organizations: { slug: org_slug })
+      else
+        user.memberships.includes(:organization).first
+      end
+
       {
         id: user.id,
         email: user.email,

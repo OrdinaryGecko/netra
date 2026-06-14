@@ -20,8 +20,12 @@ module V1
 
       def current_organization
         @current_organization ||= begin
-          org_from_membership = current_user&.memberships&.includes(:organization)&.first&.organization
-          org_from_membership || current_project&.organization
+          slug = request.headers["X-Netra-Org-Slug"].to_s.presence
+          if slug
+            Organization.find_by(slug: slug)
+          else
+            current_user&.memberships&.includes(:organization)&.first&.organization
+          end
         end
       end
 
