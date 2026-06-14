@@ -604,3 +604,29 @@ export async function resetPassword(token: string, newPassword: string): Promise
     throw new Error(payload?.details?.join(", ") || "Reset failed");
   }
 }
+
+// API Keys
+export type ApiKeyResponse = {
+  id: number;
+  name: string;
+  active: boolean;
+  last_used_at: string | null;
+  created_at: string;
+  token_preview: string;
+  token?: string;
+};
+
+export async function fetchApiKeys(projectId: string): Promise<ApiKeyResponse[]> {
+  return request<ApiKeyResponse[]>(`/v1/admin/projects/${projectId}/api_keys`);
+}
+
+export async function createApiKey(projectId: string, name: string): Promise<ApiKeyResponse> {
+  return request<ApiKeyResponse>(`/v1/admin/projects/${projectId}/api_keys`, {
+    method: "POST",
+    body: { api_key: { name } },
+  });
+}
+
+export async function revokeApiKey(projectId: string, keyId: number): Promise<void> {
+  await request(`/v1/admin/projects/${projectId}/api_keys/${keyId}`, { method: "DELETE" });
+}

@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { Plus, Search, FileText, ChevronRight, FolderKanban, ChevronDown, Plug, ListTree, Workflow, FlaskConical, Settings, Pencil } from 'lucide-react';
+import { Plus, Search, FileText, ChevronRight, FolderKanban, ChevronDown, Plug, ListTree, Workflow, FlaskConical, Settings, Pencil, KeyRound } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -27,6 +27,7 @@ import { PipelinePanel } from '@/components/PipelinePanel';
 import { ProjectDryRunPanel } from '@/components/ProjectDryRunPanel';
 import { createPolicySet, fetchPolicySetsForProject, updatePolicySet } from '@/lib/api';
 import { ProjectSettingsPanel } from '@/components/ProjectSettingsPanel';
+import { ApiKeysPanel } from '@/components/ApiKeysPanel';
 import { PolicySetSummary } from '@/lib/types';
 
 export default function Policies() {
@@ -178,6 +179,10 @@ export default function Policies() {
             <TabsTrigger value="integration" className="gap-1.5">
               <Plug className="h-3.5 w-3.5" />
               Integration
+            </TabsTrigger>
+            <TabsTrigger value="keys" className="gap-1.5">
+              <KeyRound className="h-3.5 w-3.5" />
+              API Keys
             </TabsTrigger>
             <TabsTrigger value="settings" className="gap-1.5">
               <Settings className="h-3.5 w-3.5" />
@@ -360,6 +365,10 @@ export default function Policies() {
 
           <TabsContent value="integration" className="mt-6">
             {project && <IntegrationPanel project={project} />}
+          </TabsContent>
+
+          <TabsContent value="keys" className="mt-6">
+            {projectId && <ApiKeysPanel projectId={projectId} />}
           </TabsContent>
 
           <TabsContent value="settings" className="mt-6">

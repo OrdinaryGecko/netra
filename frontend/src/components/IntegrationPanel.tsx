@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CopyField } from './CopyField';
-import { KeyRound, Terminal, Plug, Info } from 'lucide-react';
+import { KeyRound, Terminal, Plug } from 'lucide-react';
 import { Project } from '@/lib/types';
 
 interface IntegrationPanelProps {
@@ -18,8 +17,6 @@ export function IntegrationPanel({ project }: IntegrationPanelProps) {
   const [baseUrl, setBaseUrl] = useState('http://localhost:3000');
 
   const provider = project.upstreamProvider || 'openai';
-
-  const cliCommand = `bin/rails runner 'app = ClientApplication.find_by!(key: "${project.key}"); record, token = ApiKey.issue!(client_application: app, name: "Runtime key", access_level: "runtime"); puts token'`;
 
   const pythonExample = `from openai import OpenAI
 
@@ -111,21 +108,11 @@ print(response.choices[0].message.content)`;
               <CardTitle className="text-base font-mono">Runtime API key</CardTitle>
               <CardDescription className="text-xs mt-0.5">
                 Used in <code>X-Api-Key</code> or <code>Authorization: Bearer</code> headers.
+                Create and manage keys from the <strong>API Keys</strong> tab.
               </CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <Alert>
-            <Info className="h-4 w-4" />
-            <AlertTitle className="font-mono text-xs">Keys are generated via CLI</AlertTitle>
-            <AlertDescription className="font-mono text-xs">
-              The plaintext key is only shown once at creation and is not retrievable from the UI.
-              Run the command below on your Netra server, then store the printed token securely.
-            </AlertDescription>
-          </Alert>
-          <CopyField label="Generate runtime key" value={cliCommand} multiline />
-        </CardContent>
       </Card>
 
       <Card>
