@@ -86,9 +86,9 @@ export function AppHeader({ currentProject, trailing }: AppHeaderProps) {
         <div className="flex items-center gap-2 shrink-0">
           {trailing}
           {user && (
-            <span className="hidden sm:inline text-xs font-mono text-muted-foreground">
+            <button onClick={() => navigate('/profile')} className="hidden sm:inline text-xs font-mono text-muted-foreground hover:text-foreground transition-colors">
               {user.name}
-            </span>
+            </button>
           )}
           {role && (
             <Badge variant="outline" className="hidden sm:inline-flex font-mono text-[10px] uppercase">

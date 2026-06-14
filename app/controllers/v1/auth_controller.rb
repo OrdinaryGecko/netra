@@ -1,7 +1,7 @@
 module V1
   class AuthController < V1::BaseController
     skip_forgery_protection
-    before_action :authenticate_user!, only: [:logout, :me]
+    before_action :authenticate_user!, only: [:logout, :me, :update_profile, :update_password]
 
     def login
       user = User.find_by(email: params[:email])
@@ -28,7 +28,31 @@ module V1
       render json: { user: serialize_user(current_user) }
     end
 
+    def update_profile
+      if current_user.update(profile_params)
+        render json: { user: serialize_user(current_user) }
+      else
+        render json: { error: "invalid_profile", details: current_user.errors.full_messages }, status: :unprocessable_entity
+      end
+    end
+
+    def update_password
+      unless current_user.authenticate(params[:current_password].to_s)
+        return render json: { error: "invalid_password", details: ["Current password is incorrect"] }, status: :unprocessable_entity
+      end
+
+      if current_user.update(password: params[:new_password])
+        render json: { user: serialize_user(current_user) }
+      else
+        render json: { error: "invalid_password", details: current_user.errors.full_messages }, status: :unprocessable_entity
+      end
+    end
+
     private
+
+    def profile_params
+      params.permit(:name, :email)
+    end
 
     def serialize_user(user)
       membership = user.memberships.includes(:organization).first

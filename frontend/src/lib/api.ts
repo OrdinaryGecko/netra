@@ -545,3 +545,15 @@ export async function updateMemberRole(membershipId: number, role: string): Prom
 export async function removeMember(membershipId: number): Promise<void> {
   await request(`/v1/admin/memberships/${membershipId}`, { method: "DELETE" });
 }
+
+// Profile
+export async function updateProfile(params: { name?: string; email?: string }): Promise<void> {
+  await request("/v1/auth/profile", { method: "PATCH", body: params });
+}
+
+export async function updatePassword(currentPassword: string, newPassword: string): Promise<void> {
+  await request("/v1/auth/password", {
+    method: "PATCH",
+    body: { current_password: currentPassword, new_password: newPassword },
+  });
+}
