@@ -1,0 +1,22 @@
+<h2>You've been invited to Netra</h2>
+
+<p>Hi <%= @name %>,</p>
+
+<p>You've been invited to join Netra. Sign in with your temporary credentials:</p>
+
+<table style="font-family: monospace; font-size: 13px; border-collapse: collapse; margin: 16px 0;">
+  <tr>
+    <td style="padding: 4px 12px 4px 0; color: #666;">Email:</td>
+    <td style="padding: 4px 0;"><%= @email %></td>
+  </tr>
+  <tr>
+    <td style="padding: 4px 12px 4px 0; color: #666;">Password:</td>
+    <td style="padding: 4px 0;"><%= @temp_password %></td>
+  </tr>
+</table>
+
+<p><a href="<%= @login_url %>">Sign in to Netra</a></p>
+
+<p>Please change your password after signing in.</p>
+
+<p>— Netra</p>

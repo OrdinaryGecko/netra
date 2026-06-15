@@ -24,7 +24,12 @@ Rails.application.routes.draw do
         post :test, on: :member
       end
       resources :rules, only: %i[create update destroy]
-      resources :users, only: %i[index create update destroy]
+      resources :users, only: %i[index create update destroy] do
+        collection do
+          get :me
+          patch :update_password
+        end
+      end
     end
   end
 end

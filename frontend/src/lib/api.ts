@@ -564,7 +564,7 @@ export async function updateProfile(params: { name?: string; email?: string }): 
 }
 
 export async function updatePassword(currentPassword: string, newPassword: string): Promise<void> {
-  await request("/v1/auth/password", {
+  await request("/v1/admin/users/update_password", {
     method: "PATCH",
     body: { current_password: currentPassword, new_password: newPassword },
   });
@@ -573,24 +573,28 @@ export async function updatePassword(currentPassword: string, newPassword: strin
 // Password reset
 export async function forgotPassword(email: string): Promise<void> {
   const headers: Record<string, string> = { Accept: "application/json", "Content-Type": "application/json" };
-  const response = await fetch(apiUrl("/v1/auth/forgot_password"), {
+  const orgSlug = getOrgSlug();
+  if (orgSlug) headers["X-Netra-Org-Slug"] = orgSlug;
+  const response = await fetch(apiUrl("/v1/auth/password"), {
     method: "POST",
     headers,
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ user: { email } }),
   });
   if (!response.ok) throw new Error("Request failed");
 }
 
 export async function resetPassword(token: string, newPassword: string): Promise<void> {
   const headers: Record<string, string> = { Accept: "application/json", "Content-Type": "application/json" };
-  const response = await fetch(apiUrl("/v1/auth/reset_password"), {
-    method: "POST",
+  const orgSlug = getOrgSlug();
+  if (orgSlug) headers["X-Netra-Org-Slug"] = orgSlug;
+  const response = await fetch(apiUrl("/v1/auth/password"), {
+    method: "PATCH",
     headers,
-    body: JSON.stringify({ token, new_password: newPassword }),
+    body: JSON.stringify({ user: { reset_password_token: token, password: newPassword, password_confirmation: newPassword } }),
   });
   if (!response.ok) {
     const payload = await response.json().catch(() => null);
-    throw new Error(payload?.details?.join(", ") || "Reset failed");
+    throw new Error(payload?.details?.join(", ") || payload?.error || "Reset failed");
   }
 }
 
