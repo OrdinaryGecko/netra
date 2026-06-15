@@ -8,7 +8,7 @@ AI guardrails middleware. Sits between your application and LLM providers, appli
 - **Deterministic guardrails** — max message length, keyword detection with masking, PII detection, JSON format enforcement
 - **Policy composition** — multiple policy sets per environment, priority-ordered, all rules evaluate
 - **Versioned policies** — draft → publish → archive lifecycle, clone for safe iteration
-- **Multi-tenant** — subdomain-based organization isolation (`acme.netra.local`)
+- **Multi-tenant** — schema-per-tenant isolation via subdomain (`acme.localhost`)
 - **Role-based access** — owner, admin, editor, viewer, auditor with enforced permissions
 - **React admin console** — policy management, dry-run testing, pipeline visualization, member management
 - **Email notifications** — password reset and member invite emails (Letter Opener in dev)
@@ -17,10 +17,12 @@ AI guardrails middleware. Sits between your application and LLM providers, appli
 ## Architecture
 
 ```
-Client App → Netra (API key auth) → Input rules → LLM Provider → Output rules → Response
+Client App → Netra (API key + org slug) → Input rules → LLM Provider → Output rules → Response
 ```
 
-Admin dashboard → Netra (session token auth) → Manage policies, rules, members
+Admin dashboard → Netra (JWT auth + org slug) → Manage policies, rules, members
+
+Each organization gets its own PostgreSQL schema. Tenant isolation is handled by `ros-apartment` — all data (users, projects, policies, rules, requests) lives in the tenant schema. Only the `organizations` table (tenant registry) is shared.
 
 ## Local setup
 
@@ -45,12 +47,13 @@ Seeds also print a runtime API key for testing guardrail requests.
 
 ## Runtime API
 
-Authenticate with a runtime API key via `X-Api-Key` or `Authorization: Bearer` header.
+Authenticate with a runtime API key via `X-Api-Key` or `Authorization: Bearer` header. Include the org slug header for tenant routing.
 
 ```bash
 curl http://localhost:3000/v1/chat/completions \
   -H "Authorization: Bearer YOUR_RUNTIME_KEY" \
   -H "Content-Type: application/json" \
+  -H "X-Netra-Org-Slug: default" \
   -H "X-Netra-Environment: development" \
   -d '{
     "model": "stub-v1",
@@ -60,17 +63,18 @@ curl http://localhost:3000/v1/chat/completions \
 
 ## Admin API
 
-Authenticate with email/password → session token.
+Authenticate with email/password → JWT token (returned in `Authorization` response header).
 
 ```bash
 # Login
-curl -X POST http://localhost:3000/v1/auth/login \
+curl -s -D - -X POST http://localhost:3000/v1/auth/sign_in \
   -H "Content-Type: application/json" \
-  -d '{"email": "admin@netra.local", "password": "password", "org_slug": "default"}'
+  -H "X-Netra-Org-Slug: default" \
+  -d '{"user": {"email": "admin@netra.local", "password": "password"}}'
 
-# Use the returned token
+# Use the JWT from the Authorization response header
 curl http://localhost:3000/v1/admin/projects \
-  -H "Authorization: Bearer SESSION_TOKEN" \
+  -H "Authorization: Bearer JWT_TOKEN" \
   -H "X-Netra-Org-Slug: default"
 ```
 
@@ -95,22 +99,26 @@ curl http://localhost:3000/v1/admin/projects \
 
 ## Creating organizations
 
-Organizations are created from the backend:
+Organizations are created from the backend. Each org gets its own PostgreSQL schema:
 
 ```bash
 bin/rails runner '
 org = Organization.create!(name: "Acme Corp", slug: "acme")
-user = User.create!(name: "Jane", email: "jane@acme.com", password: "changeme")
-Membership.create!(user: user, organization: org, role: "owner")
+Apartment::Tenant.create(org.slug)
+Apartment::Tenant.switch(org.slug) do
+  User.create!(name: "Jane", email: "jane@acme.com", password: "changeme", role: "owner")
+end
 '
 ```
 
-Then visit `acme.localhost:8080` to sign in.
+Then visit `http://acme.localhost:8080` to sign in.
 
 ## Tech stack
 
 - Ruby on Rails 8.1 (API)
-- PostgreSQL
+- PostgreSQL (schema-per-tenant)
+- ros-apartment (multi-tenancy)
+- Devise + devise-jwt (authentication)
 - React + TypeScript + Vite (frontend)
 - Tailwind CSS + shadcn/ui
 - Action Mailer + Letter Opener (dev emails)
