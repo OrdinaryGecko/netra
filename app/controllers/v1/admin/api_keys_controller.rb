@@ -33,7 +33,7 @@ module V1
       private
 
       def set_project
-        @project = current_organization.projects.find(params[:project_id])
+        @project = Project.find(params[:project_id])
       end
 
       def serialize_key(key)
