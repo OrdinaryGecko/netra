@@ -1,0 +1,77 @@
+module V1
+  module Admin
+    class UsersController < Admin::BaseController
+      before_action -> { authorize!(:manage_members) }
+
+      def index
+        users = User.order(:created_at)
+        render json: users.map { |u| serialize_user(u) }
+      end
+
+      def create
+        user = User.new(user_params)
+        user.password = params.dig(:user, :password).presence || SecureRandom.hex(8)
+
+        if user.save
+          render json: serialize_user(user), status: :created
+        else
+          render_error("invalid_user", status: :unprocessable_entity, details: user.errors.full_messages)
+        end
+      end
+
+      def update
+        user = User.find(params[:id])
+
+        if user.id == current_user.id
+          return render_error("cannot_modify_self", status: :unprocessable_entity, details: ["Cannot change your own role"])
+        end
+
+        if user.role == "owner" && current_user.role != "owner"
+          return render_error("forbidden", status: :forbidden, details: ["Only owners can modify other owners"])
+        end
+
+        new_role = params.dig(:user, :role)
+        if new_role == "owner" && current_user.role != "owner"
+          return render_error("forbidden", status: :forbidden, details: ["Only owners can assign the owner role"])
+        end
+
+        if user.update(user_params.except(:email, :password))
+          render json: serialize_user(user)
+        else
+          render_error("invalid_user", status: :unprocessable_entity, details: user.errors.full_messages)
+        end
+      end
+
+      def destroy
+        user = User.find(params[:id])
+
+        if user.id == current_user.id
+          return render_error("cannot_modify_self", status: :unprocessable_entity, details: ["Cannot remove yourself"])
+        end
+
+        if user.role == "owner" && current_user.role != "owner"
+          return render_error("forbidden", status: :forbidden, details: ["Only owners can remove other owners"])
+        end
+
+        user.destroy!
+        head :no_content
+      end
+
+      private
+
+      def user_params
+        params.require(:user).permit(:email, :name, :role)
+      end
+
+      def serialize_user(user)
+        {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          created_at: user.created_at
+        }
+      end
+    end
+  end
+end

@@ -7,17 +7,17 @@ module V1
       before_action -> { authorize!(:dry_run) }, only: [:dry_run]
 
       def index
-        projects = current_organization.projects.includes(:policy_sets).order(:name)
+        projects = Project.includes(:policy_sets).order(:name)
         render json: projects.map { |project| serialize_project(project) }
       end
 
       def show
-        project = current_organization.projects.includes(:policy_sets).find(params[:id])
+        project = Project.includes(:policy_sets).find(params[:id])
         render json: serialize_project(project)
       end
 
       def create
-        project = current_organization.projects.new(project_params)
+        project = Project.new(project_params)
 
         if project.save
           project.client_applications.create!(
@@ -32,7 +32,7 @@ module V1
       end
 
       def update
-        project = current_organization.projects.find(params[:id])
+        project = Project.find(params[:id])
 
         if project.update(project_params)
           sync_client_application!(project)
@@ -43,7 +43,7 @@ module V1
       end
 
       def dry_run
-        project = current_organization.projects.find(params[:id])
+        project = Project.find(params[:id])
         client_application = project.client_applications.first
         environment = params[:environment].presence || "development"
 
@@ -72,11 +72,6 @@ module V1
           upstream_provider: project.upstream_provider,
           fail_mode: project.fail_mode,
           active: project.active,
-          organization: {
-            id: project.organization.id,
-            name: project.organization.name,
-            slug: project.organization.slug
-          },
           policy_sets_count: project.policy_sets.size
         }
       end

@@ -18,7 +18,7 @@ module Authorizable
     allowed_roles = PERMISSIONS[action]
     raise "Unknown permission: #{action}" unless allowed_roles
 
-    role = current_membership&.role
+    role = current_user&.role
     return if role && allowed_roles.include?(role)
 
     render_error("forbidden", status: :forbidden, details: ["Insufficient permissions"])

@@ -1,13 +1,11 @@
 class User < ApplicationRecord
-  has_secure_password
+  ROLES = %w[owner admin editor viewer auditor].freeze
 
-  has_many :memberships, dependent: :destroy
-  has_many :organizations, through: :memberships
-  has_many :sessions, dependent: :destroy
-  has_many :password_reset_tokens, dependent: :destroy
+  devise :database_authenticatable, :recoverable, :trackable, :validatable,
+         :jwt_authenticatable, jwt_revocation_strategy: JwtDenylist
 
-  validates :email, presence: true, uniqueness: true, format: { with: URI::MailTo::EMAIL_REGEXP }
   validates :name, presence: true
+  validates :role, presence: true, inclusion: { in: ROLES }
 
   normalizes :email, with: ->(e) { e.strip.downcase }
 end

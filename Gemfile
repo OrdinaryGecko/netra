@@ -13,6 +13,9 @@ gem "turbo-rails"
 gem "json_schemer"
 gem "rack-cors"
 gem "bcrypt", "~> 3.1"
+gem "ros-apartment", require: "apartment"
+gem "devise", "~> 4.9"
+gem "devise-jwt", "~> 0.12"
 
 gem "tzinfo-data", platforms: %i[ windows jruby ]
 gem "bootsnap", require: false
