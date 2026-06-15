@@ -27,6 +27,7 @@ Rails.application.routes.draw do
       resources :users, only: %i[index create update destroy] do
         collection do
           get :me
+          patch :update_profile
           patch :update_password
         end
       end

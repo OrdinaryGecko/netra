@@ -560,7 +560,7 @@ export async function removeMember(userId: number): Promise<void> {
 
 // Profile
 export async function updateProfile(params: { name?: string; email?: string }): Promise<void> {
-  await request("/v1/auth/profile", { method: "PATCH", body: params });
+  await request("/v1/admin/users/update_profile", { method: "PATCH", body: params });
 }
 
 export async function updatePassword(currentPassword: string, newPassword: string): Promise<void> {

@@ -1,11 +1,19 @@
 module V1
   module Admin
     class UsersController < Admin::BaseController
-      before_action -> { authorize!(:manage_members) }, except: [:me, :update_password]
+      before_action -> { authorize!(:manage_members) }, except: [:me, :update_profile, :update_password]
       before_action :authenticate_user!
 
       def me
         render json: serialize_user(current_user)
+      end
+
+      def update_profile
+        if current_user.update(params.permit(:name, :email))
+          render json: serialize_user(current_user)
+        else
+          render_error("invalid_profile", status: :unprocessable_entity, details: current_user.errors.full_messages)
+        end
       end
 
       def update_password
