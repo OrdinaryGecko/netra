@@ -8,7 +8,6 @@ type BackendProject = {
   upstream_provider?: string | null;
   fail_mode: "open" | "closed";
   active: boolean;
-  organization: { id: number; name: string; slug: string };
   policy_sets_count: number;
 };
 
@@ -70,12 +69,16 @@ function apiUrl(path: string) {
 }
 
 export function getOrgSlug(): string {
-  // Try subdomain first (e.g. acme.netra.local → acme)
+  // Try subdomain first (e.g. acme.netra.local → acme, acme.localhost → acme)
   const host = window.location.hostname;
   const parts = host.split(".");
+  if (parts.length >= 2 && parts[parts.length - 1] === "localhost") {
+    // e.g. default.localhost → ["default", "localhost"]
+    if (parts.length === 2 && parts[0] !== "localhost") return parts[0];
+  }
   if (parts.length >= 3) {
     const subdomain = parts[0];
-    if (subdomain !== "www" && subdomain !== "localhost") return subdomain;
+    if (subdomain !== "www") return subdomain;
   }
   // Fall back to stored value
   return window.localStorage.getItem(ORG_SLUG_KEY) || "";
@@ -159,7 +162,7 @@ function mapPolicyVersion(policyVersion: BackendPolicyVersion): PolicyVersion {
 function mapProject(project: BackendProject): Project {
   return {
     id: String(project.id),
-    organizationId: String(project.organization.id),
+    organizationId: "",
     name: project.name,
     slug: project.key,
     description: project.upstream_provider
@@ -170,63 +173,48 @@ function mapProject(project: BackendProject): Project {
     upstreamProvider: project.upstream_provider,
     failMode: project.fail_mode,
     active: project.active,
-    organization: {
-      id: String(project.organization.id),
-      name: project.organization.name,
-      slug: project.organization.slug,
-    },
+    organization: { id: "", name: "", slug: "" },
     policySetsCount: project.policy_sets_count,
   };
 }
 
 
-type AuthResponse = {
-  token: string;
-  user: {
-    id: number;
-    email: string;
-    name: string;
-    membership: {
-      id: number;
-      organization_id: number;
-      organization_name: string;
-      organization_slug: string;
-      role: string;
-    } | null;
-  };
-  expires_at: string;
+type AuthUser = {
+  id: number;
+  email: string;
+  name: string;
+  role: string;
 };
 
-export async function login(email: string, password: string): Promise<AuthResponse> {
+export async function login(email: string, password: string): Promise<{ user: AuthUser; token: string }> {
   const headers: Record<string, string> = {
     Accept: "application/json",
     "Content-Type": "application/json",
   };
 
   const orgSlug = getOrgSlug();
+  if (orgSlug) headers["X-Netra-Org-Slug"] = orgSlug;
 
-  const response = await fetch(apiUrl("/v1/auth/login"), {
+  const response = await fetch(apiUrl("/v1/auth/sign_in"), {
     method: "POST",
     headers,
-    body: JSON.stringify({ email, password, org_slug: orgSlug || undefined }),
+    body: JSON.stringify({ user: { email, password } }),
   });
 
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as ApiErrorPayload | null;
-    throw new Error(payload?.details?.join(", ") || payload?.error || "Login failed");
+    throw new Error(payload?.error || payload?.details?.join(", ") || "Invalid email or password");
   }
 
-  return response.json() as Promise<AuthResponse>;
+  const token = response.headers.get("Authorization")?.replace("Bearer ", "") || "";
+  const data = await response.json() as { user: AuthUser };
+
+  return { user: data.user, token };
 }
 
 export async function logout(): Promise<void> {
-  await request("/v1/auth/logout", { method: "DELETE" }).catch(() => {});
+  await request("/v1/auth/sign_out", { method: "DELETE" }).catch(() => {});
   clearSessionToken();
-}
-
-export async function getMe(): Promise<AuthResponse["user"]> {
-  const payload = await request<{ user: AuthResponse["user"] }>("/v1/auth/me");
-  return payload.user;
 }
 
 export async function fetchPolicySets(): Promise<PolicySetSummary[]> {
@@ -542,31 +530,32 @@ export async function updatePolicyVersion(policyVersionId: string, params: {
 // Member management
 export type MemberResponse = {
   id: number;
+  email: string;
+  name: string;
   role: string;
   created_at: string;
-  user: { id: number; email: string; name: string };
 };
 
 export async function fetchMembers(): Promise<MemberResponse[]> {
-  return request<MemberResponse[]>("/v1/admin/memberships");
+  return request<MemberResponse[]>("/v1/admin/users");
 }
 
 export async function inviteMember(params: { email: string; name?: string; role: string }): Promise<MemberResponse> {
-  return request<MemberResponse>("/v1/admin/memberships", {
+  return request<MemberResponse>("/v1/admin/users", {
     method: "POST",
-    body: { membership: params },
+    body: { user: params },
   });
 }
 
-export async function updateMemberRole(membershipId: number, role: string): Promise<MemberResponse> {
-  return request<MemberResponse>(`/v1/admin/memberships/${membershipId}`, {
+export async function updateMemberRole(userId: number, role: string): Promise<MemberResponse> {
+  return request<MemberResponse>(`/v1/admin/users/${userId}`, {
     method: "PATCH",
-    body: { membership: { role } },
+    body: { user: { role } },
   });
 }
 
-export async function removeMember(membershipId: number): Promise<void> {
-  await request(`/v1/admin/memberships/${membershipId}`, { method: "DELETE" });
+export async function removeMember(userId: number): Promise<void> {
+  await request(`/v1/admin/users/${userId}`, { method: "DELETE" });
 }
 
 // Profile

@@ -92,12 +92,12 @@ export default function Members() {
           <CardContent>
             <div className="border rounded-md divide-y">
               {members.map((member) => {
-                const isSelf = String(member.user.id) === user?.id;
+                const isSelf = String(member.id) === user?.id;
                 return (
                   <div key={member.id} className="flex items-center gap-3 px-4 py-3">
                     <div className="flex-1 min-w-0">
-                      <div className="font-mono text-sm truncate">{member.user.name}</div>
-                      <div className="font-mono text-xs text-muted-foreground truncate">{member.user.email}</div>
+                      <div className="font-mono text-sm truncate">{member.name}</div>
+                      <div className="font-mono text-xs text-muted-foreground truncate">{member.email}</div>
                     </div>
                     {canManage && !isSelf ? (
                       <Select

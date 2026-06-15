@@ -1,6 +1,22 @@
 import { createContext, useContext, useEffect, useMemo, useState, ReactNode, useCallback } from "react";
-import { clearSessionToken, fetchProjects, getMe, getOrgSlug, login, logout, storedSessionToken, storeOrgSlug, storeSessionToken } from "@/lib/api";
+import { clearSessionToken, fetchProjects, login, logout, storedSessionToken, storeOrgSlug, storeSessionToken } from "@/lib/api";
 import { AdminSession, Membership, Organization, Project, User } from "@/lib/types";
+
+const USER_STORAGE_KEY = "netra.user";
+
+function storedUser(): { id: string; email: string; name: string; role: string } | null {
+  const raw = window.localStorage.getItem(USER_STORAGE_KEY);
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
+function storeUser(user: { id: string; email: string; name: string; role: string }) {
+  window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+}
+
+function clearUser() {
+  window.localStorage.removeItem(USER_STORAGE_KEY);
+}
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -23,57 +39,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AdminSession | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
 
-  const hydrateFromUser = useCallback(async (userData: { id: number; email: string; name: string; membership: { id: number; organization_id: number; organization_name: string; organization_slug: string; role: string } | null }) => {
-    if (!userData.membership) throw new Error("No organization membership");
-
-    const sess: AdminSession = {
-      user: { id: String(userData.id), email: userData.email, name: userData.name },
-      organization: {
-        id: String(userData.membership.organization_id),
-        name: userData.membership.organization_name,
-        slug: userData.membership.organization_slug,
-      },
-      membership: {
-        id: String(userData.membership.id),
-        userId: String(userData.id),
-        organizationId: String(userData.membership.organization_id),
-        role: userData.membership.role as Membership["role"],
-      },
+  const buildSession = useCallback((userData: { id: string; email: string; name: string; role: string }): AdminSession => {
+    return {
+      user: { id: userData.id, email: userData.email, name: userData.name },
+      organization: { id: "1", name: "", slug: "" },
+      membership: { id: "1", userId: userData.id, organizationId: "1", role: userData.role as Membership["role"] },
     };
-
-    setSession(sess);
-    setIsAuthenticated(true);
-    setProjects(await fetchProjects());
   }, []);
 
   useEffect(() => {
-    if (!storedSessionToken()) {
+    const token = storedSessionToken();
+    const userData = storedUser();
+    if (token && userData) {
+      setSession(buildSession(userData));
+      setIsAuthenticated(true);
+      fetchProjects()
+        .then(setProjects)
+        .catch(() => {
+          clearSessionToken();
+          clearUser();
+          setIsAuthenticated(false);
+          setSession(null);
+        })
+        .finally(() => setIsLoading(false));
+    } else {
       setIsLoading(false);
-      return;
     }
-
-    getMe()
-      .then(hydrateFromUser)
-      .catch(() => {
-        clearSessionToken();
-        setSession(null);
-        setProjects([]);
-        setIsAuthenticated(false);
-      })
-      .finally(() => setIsLoading(false));
-  }, [hydrateFromUser]);
+  }, [buildSession]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     const response = await login(email, password);
     storeSessionToken(response.token);
-    if (response.user.membership?.organization_slug) {
-      storeOrgSlug(response.user.membership.organization_slug);
-    }
-    await hydrateFromUser(response.user);
-  }, [hydrateFromUser]);
+    const userData = {
+      id: String(response.user.id),
+      email: response.user.email,
+      name: response.user.name,
+      role: response.user.role,
+    };
+    storeUser(userData);
+    storeOrgSlug("");
+    setSession(buildSession(userData));
+    setIsAuthenticated(true);
+    setProjects(await fetchProjects());
+  }, [buildSession]);
 
   const signOut = useCallback(async () => {
     await logout();
+    clearUser();
     setSession(null);
     setProjects([]);
     setIsAuthenticated(false);
@@ -83,8 +95,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProjects(await fetchProjects());
   }, []);
 
-  const organization = session?.organization || null;
   const user = session?.user || null;
+  const organization = session?.organization || null;
   const membership = session?.membership || null;
 
   const value = useMemo(
@@ -133,9 +145,9 @@ export function usePermissions() {
 
   return {
     role,
-    canManage: level >= 4,      // owner, admin
-    canEdit: level >= 3,        // owner, admin, editor
-    canView: level >= 2,        // owner, admin, editor, viewer
-    canViewLogs: level >= 1,    // all roles
+    canManage: level >= 4,
+    canEdit: level >= 3,
+    canView: level >= 2,
+    canViewLogs: level >= 1,
   };
 }
