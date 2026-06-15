@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { ConfirmDialog } from './ConfirmDialog';
 import { KeyRound, Plus, Trash2, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -22,6 +23,7 @@ export function ApiKeysPanel({ projectId }: ApiKeysPanelProps) {
   const [name, setName] = useState('');
   const [newToken, setNewToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [revokingId, setRevokingId] = useState<number | null>(null);
 
   const keysQuery = useQuery({
     queryKey: ['api-keys', projectId],
@@ -124,7 +126,7 @@ export function ApiKeysPanel({ projectId }: ApiKeysPanelProps) {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() => revokeMutation.mutate(key.id)}
+                      onClick={() => setRevokingId(key.id)}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
@@ -155,6 +157,15 @@ export function ApiKeysPanel({ projectId }: ApiKeysPanelProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={!!revokingId}
+        onClose={() => setRevokingId(null)}
+        onConfirm={() => { if (revokingId) revokeMutation.mutate(revokingId); setRevokingId(null); }}
+        title="Revoke API key"
+        description="This key will be permanently deactivated. Any applications using it will stop working immediately."
+        confirmLabel="Revoke"
+        destructive
+      />
     </div>
   );
 }

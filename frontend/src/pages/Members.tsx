@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth, usePermissions } from '@/contexts/AuthContext';
 import { AppHeader } from '@/components/AppHeader';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { fetchMembers, inviteMember, updateMemberRole, removeMember, MemberResponse } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,7 @@ export default function Members() {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [role, setRole] = useState('viewer');
+  const [removingId, setRemovingId] = useState<number | null>(null);
 
   const membersQuery = useQuery({
     queryKey: ['members'],
@@ -123,7 +125,7 @@ export default function Members() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => removeMutation.mutate(member.id)}
+                        onClick={() => setRemovingId(member.id)}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -170,6 +172,15 @@ export default function Members() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={!!removingId}
+        onClose={() => setRemovingId(null)}
+        onConfirm={() => { if (removingId) removeMutation.mutate(removingId); setRemovingId(null); }}
+        title="Remove member"
+        description="This member will lose access to the organization. This cannot be undone."
+        confirmLabel="Remove"
+        destructive
+      />
     </div>
   );
 }

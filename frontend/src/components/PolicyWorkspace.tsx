@@ -13,6 +13,7 @@ import {
 import { VersionHeader } from './VersionHeader';
 import { RulesTable } from './RulesTable';
 import { RuleEditorDialog } from './RuleEditorDialog';
+import { ConfirmDialog } from './ConfirmDialog';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -24,6 +25,8 @@ export function PolicyWorkspace() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [cloneOpen, setCloneOpen] = useState(false);
   const [cloneVersionName, setCloneVersionName] = useState('');
+  const [deleteRuleId, setDeleteRuleId] = useState<string | null>(null);
+  const [publishConfirm, setPublishConfirm] = useState(false);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { projectId, versionId } = useParams<{ projectId: string; versionId: string }>();
@@ -103,7 +106,12 @@ export function PolicyWorkspace() {
   };
 
   const handlePublish = () => {
+    setPublishConfirm(true);
+  };
+
+  const confirmPublish = () => {
     if (version) publishMutation.mutate(version);
+    setPublishConfirm(false);
   };
 
   const handleClone = () => {
@@ -130,7 +138,12 @@ export function PolicyWorkspace() {
   };
 
   const handleDeleteRule = (id: string) => {
-    deleteRuleMutation.mutate(id);
+    setDeleteRuleId(id);
+  };
+
+  const confirmDeleteRule = () => {
+    if (deleteRuleId) deleteRuleMutation.mutate(deleteRuleId);
+    setDeleteRuleId(null);
   };
 
   if (versionQuery.isLoading) {
@@ -208,6 +221,23 @@ export function PolicyWorkspace() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={!!deleteRuleId}
+        onClose={() => setDeleteRuleId(null)}
+        onConfirm={confirmDeleteRule}
+        title="Delete rule"
+        description="This rule will be permanently removed from this draft. This cannot be undone."
+        confirmLabel="Delete"
+        destructive
+      />
+      <ConfirmDialog
+        open={publishConfirm}
+        onClose={() => setPublishConfirm(false)}
+        onConfirm={confirmPublish}
+        title="Publish version"
+        description="Publishing will lock this version and make it active. The current active version will be archived. This cannot be undone."
+        confirmLabel="Publish"
+      />
     </div>
   );
 }

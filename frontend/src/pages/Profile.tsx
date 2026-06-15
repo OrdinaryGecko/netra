@@ -11,7 +11,7 @@ import { UserCircle, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
 
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
@@ -22,7 +22,10 @@ export default function Profile() {
 
   const profileMutation = useMutation({
     mutationFn: () => updateProfile({ name: name.trim(), email: email.trim() }),
-    onSuccess: () => toast.success('Profile updated'),
+    onSuccess: () => {
+      updateUser({ name: name.trim(), email: email.trim() });
+      toast.success('Profile updated');
+    },
     onError: (error: Error) => toast.error(error.message),
   });
 

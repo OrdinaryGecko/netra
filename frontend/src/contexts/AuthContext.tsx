@@ -29,6 +29,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProjects: () => Promise<void>;
+  updateUser: (data: { name?: string; email?: string }) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -95,6 +96,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProjects(await fetchProjects());
   }, []);
 
+  const updateUser = useCallback((data: { name?: string; email?: string }) => {
+    setSession((prev) => {
+      if (!prev) return prev;
+      const updatedUser = { ...prev.user, ...data };
+      storeUser({ ...updatedUser, role: prev.membership.role });
+      return { ...prev, user: updatedUser };
+    });
+  }, []);
+
   const user = session?.user || null;
   const organization = session?.organization || null;
   const membership = session?.membership || null;
@@ -111,8 +121,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signIn,
       signOut,
       refreshProjects,
+      updateUser,
     }),
-    [isAuthenticated, isLoading, session, user, organization, membership, projects, signIn, signOut, refreshProjects]
+    [isAuthenticated, isLoading, session, user, organization, membership, projects, signIn, signOut, refreshProjects, updateUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
