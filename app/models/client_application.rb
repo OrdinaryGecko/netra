@@ -9,21 +9,4 @@ class ClientApplication < ApplicationRecord
 
   validates :name, :key, presence: true
   validates :key, uniqueness: true
-
-  after_create :ensure_default_project!
-
-  def ensure_default_project!
-    return project if project
-
-    organization = Organization.find_or_create_by!(slug: "default") do |org|
-      org.name = "Default Organization"
-    end
-
-    created_project = organization.projects.find_or_create_by!(key:) do |project|
-      project.name = name
-    end
-
-    update_column(:project_id, created_project.id)
-    created_project
-  end
 end

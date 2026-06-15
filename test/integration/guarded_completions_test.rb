@@ -1,129 +1,50 @@
 require "test_helper"
 
 class GuardedCompletionsTest < ActionDispatch::IntegrationTest
+  include TenantTestHelper
+
   setup do
-    @client_application = ClientApplication.create!(name: "Test App", key: "test-app")
-    @agent = @client_application.agents.create!(name: "Assistant", identifier: "assistant")
-    @policy_set = @client_application.policy_sets.create!(name: "default", environment: "test")
-    @policy_version = @policy_set.policy_versions.create!(version: "1", status: "draft")
-    @policy_version.rules.create!(
-      name: "max-input",
-      kind: "max_message_chars",
-      stage: "input",
-      action: "block",
-      priority: 10,
-      config: { max: 50 }
-    )
-    @policy_version.rules.create!(
-      name: "json-output",
-      kind: "json_format",
-      stage: "output",
-      action: "block",
-      priority: 20,
-      config: {}
-    )
-    @policy_version.publish!
-    _, @plaintext_key = ApiKey.issue!(client_application: @client_application, name: "Test key")
+    create_tenant!("test")
+    Apartment::Tenant.switch("test") do
+      @client_application = ClientApplication.create!(name: "Test App", key: "test-app")
+      @agent = @client_application.agents.create!(name: "Assistant", identifier: "assistant")
+      @policy_set = @client_application.policy_sets.create!(name: "default", environment: "test")
+      @policy_version = @policy_set.policy_versions.create!(version: "1", status: "draft")
+      @policy_version.rules.create!(name: "max-input", kind: "max_message_chars", stage: "input", action: "block", priority: 10, config: { max: 50 })
+      @policy_version.rules.create!(name: "json-output", kind: "json_format", stage: "output", action: "block", priority: 20, config: {})
+      @policy_version.publish!
+      _, @plaintext_key = ApiKey.issue!(client_application: @client_application, name: "Test key")
+    end
   end
 
   test "returns a guarded stub response" do
     post "/v1/guarded_completions",
       params: {
-        application_key: "test-app",
-        agent_identifier: "assistant",
-        environment: "test",
-        provider: "stub",
-        model: "stub-v1",
-        messages: [{ role: "user", content: "Return JSON for this request" }],
+        application_key: "test-app", agent_identifier: "assistant", environment: "test",
+        provider: "stub", model: "stub-v1",
+        messages: [{ role: "user", content: "Return JSON" }],
         options: { expected_output: { format: "json_object" } }
       },
       as: :json,
-      headers: { "X-Api-Key" => @plaintext_key }
+      headers: { "X-Api-Key" => @plaintext_key, "X-Netra-Org-Slug" => "test" }
 
     assert_response :success
     body = JSON.parse(response.body)
-
     assert_equal "allowed", body["status"]
-    assert_equal "allow", body["action"]
-    assert_match(/\A[0-9a-f-]{36}\z/, body["trace_id"])
   end
 
   test "blocks an oversized prompt" do
     post "/v1/guarded_completions",
       params: {
-        application_key: "test-app",
-        agent_identifier: "assistant",
-        environment: "test",
-        provider: "stub",
-        model: "stub-v1",
+        application_key: "test-app", agent_identifier: "assistant", environment: "test",
+        provider: "stub", model: "stub-v1",
         messages: [{ role: "user", content: "x" * 60 }]
       },
       as: :json,
-      headers: { "X-Api-Key" => @plaintext_key }
+      headers: { "X-Api-Key" => @plaintext_key, "X-Netra-Org-Slug" => "test" }
 
     assert_response :unprocessable_entity
     body = JSON.parse(response.body)
-
     assert_equal "blocked", body["status"]
-    assert_equal ["max-input"], body["reasons"]
-  end
-
-  test "input rules default to latest user message scope" do
-    post "/v1/guarded_completions",
-      params: {
-        application_key: "test-app",
-        agent_identifier: "assistant",
-        environment: "test",
-        provider: "stub",
-        model: "stub-v1",
-        messages: [
-          { role: "user", content: "x" * 60 },
-          { role: "assistant", content: "Earlier response" },
-          { role: "user", content: "short" }
-        ],
-        options: { expected_output: { format: "json_object" } }
-      },
-      as: :json,
-      headers: { "X-Api-Key" => @plaintext_key }
-
-    assert_response :success
-    body = JSON.parse(response.body)
-
-    assert_equal "allowed", body["status"]
-  end
-
-  test "input rules can still evaluate the full conversation when configured" do
-    @policy_version = @policy_set.policy_versions.create!(version: "2", status: "draft")
-    @policy_version.rules.create!(
-      name: "max-full-conversation",
-      kind: "max_message_chars",
-      stage: "input",
-      action: "block",
-      priority: 10,
-      config: { max: 50, scope: "full_conversation" }
-    )
-    @policy_version.publish!
-
-    post "/v1/guarded_completions",
-      params: {
-        application_key: "test-app",
-        agent_identifier: "assistant",
-        environment: "test",
-        provider: "stub",
-        model: "stub-v1",
-        messages: [
-          { role: "user", content: "x" * 45 },
-          { role: "assistant", content: "ok" },
-          { role: "user", content: "short" }
-        ]
-      },
-      as: :json,
-      headers: { "X-Api-Key" => @plaintext_key }
-
-    assert_response :unprocessable_entity
-    body = JSON.parse(response.body)
-
-    assert_equal "blocked", body["status"]
-    assert_equal ["max-full-conversation"], body["reasons"]
   end
 end

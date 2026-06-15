@@ -14,20 +14,49 @@ module ActiveSupport
   end
 end
 
-module AdminAuthHelper
-  def create_admin_user!(organization: nil)
-    org = organization || Organization.find_or_create_by!(slug: "test") { |o| o.name = "Test Org" }
-    user = User.find_or_create_by!(email: "test@netra.local") do |u|
-      u.name = "Test Admin"
-      u.password = "password"
+module TenantTestHelper
+  extend ActiveSupport::Concern
+
+  included do
+    self.use_transactional_tests = false
+
+    teardown do
+      Apartment::Tenant.switch!("public")
+      # Clean up tenant schemas created during tests
+      (Apartment.tenant_names - ["public"]).each do |tenant|
+        Apartment::Tenant.drop(tenant) rescue nil
+      end
+      Organization.delete_all
     end
-    Membership.find_or_create_by!(user: user, organization: org) { |m| m.role = "owner" }
-    [user, org]
   end
 
-  def admin_session_headers(user = nil)
-    user ||= create_admin_user!.first
-    _session, token = Session.create_for_user!(user)
-    { "Authorization" => "Bearer #{token}" }
+  def create_tenant!(slug = "test")
+    org = Organization.find_or_create_by!(slug: slug) { |o| o.name = "#{slug.capitalize} Org" }
+    begin
+      Apartment::Tenant.create(slug)
+    rescue Apartment::TenantExists
+    end
+    org
+  end
+
+  def within_tenant(slug = "test")
+    create_tenant!(slug)
+    Apartment::Tenant.switch(slug) { yield }
+  end
+
+  def create_owner_in_tenant!(slug = "test")
+    create_tenant!(slug)
+    Apartment::Tenant.switch(slug) do
+      User.find_or_create_by!(email: "owner@test.com") do |u|
+        u.name = "Test Owner"
+        u.role = "owner"
+        u.password = "password"
+      end
+    end
+  end
+
+  def auth_headers_for(user, slug = "test")
+    token = Warden::JWTAuth::UserEncoder.new.call(user, :user, nil).first
+    { "Authorization" => "Bearer #{token}", "X-Netra-Org-Slug" => slug }
   end
 end

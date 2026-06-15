@@ -1,97 +1,79 @@
+# Create organization in public schema (tenant registry)
 organization = Organization.find_or_create_by!(slug: "default") do |org|
   org.name = "Default Organization"
 end
 
-project = organization.projects.find_or_create_by!(key: "demo-app") do |record|
-  record.name = "Demo Project"
-  record.upstream_provider = "stub"
+# Create the tenant schema
+begin
+  Apartment::Tenant.create(organization.slug)
+rescue Apartment::TenantExists
+  # already exists
 end
 
-client_application = ClientApplication.find_or_create_by!(key: "demo-app") do |app|
-  app.name = "Demo Application"
-end
-client_application.update!(project:) if client_application.project != project
+# Switch to tenant schema and seed data
+Apartment::Tenant.switch(organization.slug) do
+  # Create owner user
+  user = User.find_or_create_by!(email: "admin@netra.local") do |u|
+    u.name = "Admin"
+    u.role = "owner"
+    u.password = "password"
+  end
+  puts "Seeded user: admin@netra.local / password"
 
-agent = client_application.agents.find_or_create_by!(identifier: "assistant") do |agent|
-  agent.name = "Assistant"
-  agent.description = "Default agent for MVP requests"
-  agent.project = project
-end
-agent.update!(project:) if agent.project != project
+  # Create project
+  project = Project.find_or_create_by!(key: "demo-app") do |p|
+    p.name = "Demo Project"
+    p.upstream_provider = "stub"
+  end
 
-provider_config = client_application.provider_configs.find_or_create_by!(name: "Local Stub") do |provider|
-  provider.project = project
-  provider.provider = "stub"
-  provider.active = true
-end
-provider_config.update!(project:) if provider_config.project != project
+  # Create client application
+  client_application = ClientApplication.find_or_create_by!(key: "demo-app") do |app|
+    app.name = "Demo Application"
+    app.project = project
+  end
 
-policy_set = client_application.policy_sets.find_or_create_by!(name: "default", environment: "development")
-policy_set.update!(project:) if policy_set.project != project
-policy_version = policy_set.policy_versions.find_or_create_by!(version: "1") do |version|
-  version.status = "draft"
-  version.definition = { description: "Default MVP guardrails policy" }
-end
+  # Create agent
+  Agent.find_or_create_by!(client_application: client_application, identifier: "assistant") do |agent|
+    agent.name = "Assistant"
+    agent.description = "Default agent"
+    agent.project = project
+  end
 
-rules = [
-  {
-    name: "input size limit",
-    kind: "max_message_chars",
-    stage: "input",
-    action: "block",
-    priority: 10,
-    config: { max: 4_000 }
-  },
-  {
-    name: "prompt injection keywords",
-    kind: "keyword_detector",
-    stage: "input",
-    action: "block",
-    priority: 20,
-    config: { keywords: ["ignore previous instructions", "reveal system prompt"] }
-  },
-  {
-    name: "output pii mask",
-    kind: "pii_detector",
-    stage: "output",
-    action: "mask",
-    priority: 30,
-    config: {}
-  },
-  {
-    name: "json output enforcer",
-    kind: "json_format",
-    stage: "output",
-    action: "block",
-    priority: 40,
-    config: {}
-  }
-]
+  # Create provider config
+  ProviderConfig.find_or_create_by!(client_application: client_application, name: "Local Stub") do |pc|
+    pc.project = project
+    pc.provider = "stub"
+    pc.active = true
+  end
 
-rules.each do |attributes|
-  policy_version.rules.find_or_create_by!(name: attributes[:name]) do |rule|
-    rule.assign_attributes(attributes)
+  # Create policy set and rules
+  policy_set = PolicySet.find_or_create_by!(client_application: client_application, name: "default", environment: "development") do |ps|
+    ps.project = project
+  end
+
+  policy_version = policy_set.policy_versions.find_or_create_by!(version: "1") do |pv|
+    pv.status = "draft"
+    pv.definition = { description: "Default guardrails policy" }
+  end
+
+  rules = [
+    { name: "input size limit", kind: "max_message_chars", stage: "input", action: "block", priority: 10, config: { max: 4_000 } },
+    { name: "prompt injection keywords", kind: "keyword_detector", stage: "input", action: "block", priority: 20, config: { keywords: ["ignore previous instructions", "reveal system prompt"] } },
+    { name: "output pii mask", kind: "pii_detector", stage: "output", action: "mask", priority: 30, config: {} },
+    { name: "json output enforcer", kind: "json_format", stage: "output", action: "block", priority: 40, config: {} }
+  ]
+
+  rules.each do |attrs|
+    policy_version.rules.find_or_create_by!(name: attrs[:name]) do |rule|
+      rule.assign_attributes(attrs)
+    end
+  end
+
+  policy_version.publish! unless policy_version.status == "active"
+
+  # Create runtime API key
+  unless client_application.api_keys.exists?(name: "Seeded runtime key")
+    _, plaintext = ApiKey.issue!(client_application: client_application, project: project, name: "Seeded runtime key")
+    puts "Seeded runtime API key: #{plaintext}"
   end
 end
-
-policy_version.publish! unless policy_version.status == "active"
-
-api_key = client_application.api_keys.find_by(name: "Seeded development key")
-unless api_key
-  api_key, plaintext = ApiKey.issue!(client_application:, project:, name: "Seeded development key")
-  puts "Seeded runtime API key: #{plaintext}"
-else
-  api_key.update!(project:) if api_key.project != project
-end
-
-# Default user with owner role
-user = User.find_or_create_by!(email: "admin@netra.local") do |u|
-  u.name = "Admin"
-  u.password = "password"
-end
-
-Membership.find_or_create_by!(user: user, organization: organization) do |m|
-  m.role = "owner"
-end
-
-puts "Seeded user: admin@netra.local / password"

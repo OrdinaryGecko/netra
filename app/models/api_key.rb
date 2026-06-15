@@ -13,7 +13,7 @@ class ApiKey < ApplicationRecord
 
   def self.issue!(client_application:, name:, access_level: "runtime", project: nil)
     plaintext = SecureRandom.hex(24)
-    project ||= client_application.ensure_default_project!
+    project ||= client_application.project
 
     record = create!(
       client_application:,

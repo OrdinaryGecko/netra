@@ -3,14 +3,14 @@ Rails.application.routes.draw do
 
   get "up" => "rails/health#show", as: :rails_health_check
 
+  devise_for :users, path: "v1/auth", controllers: {
+    sessions: "v1/sessions",
+    passwords: "v1/passwords"
+  }
+
   namespace :v1 do
     post :guarded_completions, to: "guarded_completions#create"
     post "chat/completions", to: "chat_completions#create"
-
-    devise_for :users, path: "auth", controllers: {
-      sessions: "v1/sessions",
-      passwords: "v1/passwords"
-    }
 
     namespace :admin do
       resources :projects, only: %i[index create show update] do
