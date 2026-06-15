@@ -1,0 +1,14 @@
+<h2>Confirm your new email</h2>
+
+<p>Hi <%= @resource.name %>,</p>
+
+<p>You requested to change your email to <strong><%= @resource.unconfirmed_email %></strong>. Click the link below to confirm:</p>
+
+<% frontend_host = ENV.fetch('FRONTEND_HOST', 'localhost:8080') %>
+<% tenant = Apartment::Tenant.current %>
+<% confirm_url = "http://#{tenant}.#{frontend_host}/confirm-email?token=#{@token}" %>
+<p><a href="<%= confirm_url %>">Confirm my new email</a></p>
+
+<p>If you didn't request this change, you can safely ignore this email.</p>
+
+<p>— Netra</p>

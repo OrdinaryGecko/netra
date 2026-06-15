@@ -5,7 +5,8 @@ Rails.application.routes.draw do
 
   devise_for :users, path: "v1/auth", controllers: {
     sessions: "v1/sessions",
-    passwords: "v1/passwords"
+    passwords: "v1/passwords",
+    confirmations: "v1/confirmations"
   }
 
   namespace :v1 do

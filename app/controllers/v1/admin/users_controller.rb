@@ -37,6 +37,7 @@ module V1
         user = User.new(user_params)
         temp_password = params.dig(:user, :password).presence || SecureRandom.hex(8)
         user.password = temp_password
+        user.skip_confirmation!
 
         if user.save
           UserMailer.member_invite(email: user.email, name: user.name, temp_password: temp_password).deliver_later

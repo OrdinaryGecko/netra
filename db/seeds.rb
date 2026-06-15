@@ -17,7 +17,9 @@ Apartment::Tenant.switch(organization.slug) do
     u.name = "Admin"
     u.role = "owner"
     u.password = "password"
+    u.skip_confirmation!
   end
+  user.confirm unless user.confirmed?
   puts "Seeded user: admin@netra.local / password"
 
   # Create project

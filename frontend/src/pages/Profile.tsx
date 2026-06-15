@@ -20,11 +20,19 @@ export default function Profile() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
+  const emailChanged = email.trim() !== (user?.email || '');
+
   const profileMutation = useMutation({
     mutationFn: () => updateProfile({ name: name.trim(), email: email.trim() }),
     onSuccess: () => {
-      updateUser({ name: name.trim(), email: email.trim() });
-      toast.success('Profile updated');
+      updateUser({ name: name.trim() });
+      setProfilePassword('');
+      if (emailChanged) {
+        toast.success('Confirmation email sent to your new address. Check your inbox.');
+        setEmail(user?.email || '');
+      } else {
+        toast.success('Profile updated');
+      }
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -76,6 +84,11 @@ export default function Profile() {
                 <Input value={email} onChange={(e) => setEmail(e.target.value)} className="font-mono text-xs" />
               </div>
             </div>
+            {emailChanged && (
+              <p className="text-xs font-mono text-muted-foreground">
+                A confirmation link will be sent to your new email address. Your email won't change until you confirm.
+              </p>
+            )}
             <Button
               onClick={() => profileMutation.mutate()}
               disabled={profileMutation.isPending || (!name.trim() && !email.trim())}

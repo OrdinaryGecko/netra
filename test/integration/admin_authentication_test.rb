@@ -22,7 +22,7 @@ class AdminAuthenticationTest < ActionDispatch::IntegrationTest
 
   test "viewer can read but cannot create projects" do
     viewer = within_tenant("test") do
-      User.create!(email: "viewer@test.com", name: "Viewer", role: "viewer", password: "password")
+      User.create!(email: "viewer@test.com", name: "Viewer", role: "viewer", password: "password").tap(&:confirm)
     end
 
     get "/v1/admin/projects", headers: auth_headers_for(viewer, "test")

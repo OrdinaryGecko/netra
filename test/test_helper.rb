@@ -51,6 +51,7 @@ module TenantTestHelper
         u.name = "Test Owner"
         u.role = "owner"
         u.password = "password"
+        u.skip_confirmation!
       end
     end
   end
