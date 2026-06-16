@@ -623,3 +623,50 @@ export async function createApiKey(projectId: string, name: string): Promise<Api
 export async function revokeApiKey(projectId: string, keyId: number): Promise<void> {
   await request(`/v1/admin/projects/${projectId}/api_keys/${keyId}`, { method: "DELETE" });
 }
+
+// Request logs
+export type RequestLogEntry = {
+  id: number;
+  trace_id: string;
+  environment: string;
+  provider: string;
+  model: string;
+  status: "pending" | "allowed" | "blocked";
+  action: string | null;
+  reasons: string[];
+  agent: string | null;
+  occurred_at: string;
+  evaluations_count: number;
+};
+
+export type RequestLogDetail = RequestLogEntry & {
+  messages: Array<{ role: string; content: string }>;
+  response_payload: Record<string, unknown>;
+  decision: Record<string, unknown>;
+  request_metadata: Record<string, unknown>;
+  evaluations: Array<{
+    id: number;
+    stage: string;
+    rule_name: string;
+    rule_kind: string;
+    outcome: string;
+    action: string;
+    details: Record<string, unknown>;
+    latency_ms: number;
+  }>;
+};
+
+export async function fetchRequestLogs(params?: { project_id?: string; status?: string; environment?: string; limit?: number; offset?: number }): Promise<{ requests: RequestLogEntry[]; total: number }> {
+  const query = new URLSearchParams();
+  if (params?.project_id) query.set("project_id", params.project_id);
+  if (params?.status) query.set("status", params.status);
+  if (params?.environment) query.set("environment", params.environment);
+  if (params?.limit) query.set("limit", String(params.limit));
+  if (params?.offset) query.set("offset", String(params.offset));
+  const qs = query.toString();
+  return request<{ requests: RequestLogEntry[]; total: number }>(`/v1/admin/request_logs${qs ? `?${qs}` : ""}`);
+}
+
+export async function fetchRequestLog(id: number): Promise<RequestLogDetail> {
+  return request<RequestLogDetail>(`/v1/admin/request_logs/${id}`);
+}

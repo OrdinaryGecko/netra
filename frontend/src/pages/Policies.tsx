@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { Plus, Search, FileText, ChevronRight, FolderKanban, ChevronDown, Plug, ListTree, Workflow, FlaskConical, Settings, Pencil, KeyRound } from 'lucide-react';
+import { Plus, Search, FileText, ChevronRight, FolderKanban, ChevronDown, Plug, ListTree, Workflow, FlaskConical, Settings, Pencil, KeyRound, ScrollText } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -28,6 +28,7 @@ import { ProjectDryRunPanel } from '@/components/ProjectDryRunPanel';
 import { createPolicySet, fetchPolicySetsForProject, updatePolicySet } from '@/lib/api';
 import { ProjectSettingsPanel } from '@/components/ProjectSettingsPanel';
 import { ApiKeysPanel } from '@/components/ApiKeysPanel';
+import { RequestLogsPanel } from '@/components/RequestLogsPanel';
 import { PolicySetSummary } from '@/lib/types';
 
 export default function Policies() {
@@ -175,6 +176,10 @@ export default function Policies() {
             <TabsTrigger value="dryrun" className="gap-1.5">
               <FlaskConical className="h-3.5 w-3.5" />
               Dry Run
+            </TabsTrigger>
+            <TabsTrigger value="logs" className="gap-1.5">
+              <ScrollText className="h-3.5 w-3.5" />
+              Logs
             </TabsTrigger>
             <TabsTrigger value="integration" className="gap-1.5">
               <Plug className="h-3.5 w-3.5" />
@@ -361,6 +366,10 @@ export default function Policies() {
 
           <TabsContent value="dryrun" className="mt-6">
             {projectId && <ProjectDryRunPanel projectId={projectId} />}
+          </TabsContent>
+
+          <TabsContent value="logs" className="mt-6">
+            {projectId && <RequestLogsPanel projectId={projectId} />}
           </TabsContent>
 
           <TabsContent value="integration" className="mt-6">

@@ -25,6 +25,7 @@ Rails.application.routes.draw do
         post :test, on: :member
       end
       resources :rules, only: %i[create update destroy]
+      resources :request_logs, only: %i[index show]
       resources :users, only: %i[index create update destroy] do
         collection do
           get :me
