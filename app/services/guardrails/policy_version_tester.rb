@@ -236,7 +236,11 @@ module Guardrails
     end
 
     def provider
-      Providers::Factory.build(provider: provider_name, model: model_name, options:)
+      Providers::Factory.build(
+        provider: provider_name, model: model_name, options:,
+        base_url: @project&.upstream_base_url,
+        api_key: @project&.encrypted_upstream_key
+      )
     end
 
     def provider_name

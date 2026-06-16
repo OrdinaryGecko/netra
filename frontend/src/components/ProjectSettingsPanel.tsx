@@ -21,6 +21,7 @@ export function ProjectSettingsPanel({ project }: ProjectSettingsPanelProps) {
   const [name, setName] = useState(project.name);
   const [upstreamProvider, setUpstreamProvider] = useState(project.upstreamProvider || 'stub');
   const [upstreamBaseUrl, setUpstreamBaseUrl] = useState(project.upstreamBaseUrl || '');
+  const [upstreamKey, setUpstreamKey] = useState('');
   const [failMode, setFailMode] = useState(project.failMode);
   const [active, setActive] = useState(project.active);
 
@@ -29,11 +30,13 @@ export function ProjectSettingsPanel({ project }: ProjectSettingsPanelProps) {
       name: name.trim(),
       upstream_provider: upstreamProvider,
       upstream_base_url: upstreamBaseUrl || null,
+      encrypted_upstream_key: upstreamKey || undefined,
       fail_mode: failMode,
       active,
     }),
     onSuccess: async () => {
       await refreshProjects();
+      setUpstreamKey('');
       toast.success('Project settings saved');
     },
     onError: (error: Error) => toast.error(error.message),
@@ -42,6 +45,7 @@ export function ProjectSettingsPanel({ project }: ProjectSettingsPanelProps) {
   const dirty = name !== project.name
     || upstreamProvider !== (project.upstreamProvider || 'stub')
     || upstreamBaseUrl !== (project.upstreamBaseUrl || '')
+    || upstreamKey !== ''
     || failMode !== project.failMode
     || active !== project.active;
 
@@ -87,7 +91,11 @@ export function ProjectSettingsPanel({ project }: ProjectSettingsPanelProps) {
           </div>
           <div className="space-y-1.5 sm:col-span-2">
             <Label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Upstream base URL</Label>
-            <Input value={upstreamBaseUrl} onChange={(e) => setUpstreamBaseUrl(e.target.value)} placeholder="https://api.openai.com" className="font-mono text-xs" disabled={mutation.isPending} />
+            <Input value={upstreamBaseUrl} onChange={(e) => setUpstreamBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1" className="font-mono text-xs" disabled={mutation.isPending} />
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Provider API key</Label>
+            <Input type="password" value={upstreamKey} onChange={(e) => setUpstreamKey(e.target.value)} placeholder="sk-... (leave empty to keep current)" className="font-mono text-xs" disabled={mutation.isPending} />
           </div>
           <div className="flex items-center gap-3">
             <Switch checked={active} onCheckedChange={setActive} disabled={mutation.isPending} />

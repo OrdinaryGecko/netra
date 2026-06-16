@@ -44,7 +44,9 @@ module Guardrails
         provider_response = Providers::Factory.build(
           provider: @request_payload[:provider],
           model: @request_payload[:model],
-          options: @request_payload[:options] || {}
+          options: @request_payload[:options] || {},
+          base_url: @project&.upstream_base_url,
+          api_key: @project&.encrypted_upstream_key
         ).complete(messages: forwarded_messages)
 
         output_text = provider_response[:content]

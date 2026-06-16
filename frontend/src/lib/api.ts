@@ -490,6 +490,7 @@ export async function updateProject(projectId: string, params: {
   name?: string;
   upstream_provider?: string | null;
   upstream_base_url?: string | null;
+  encrypted_upstream_key?: string;
   fail_mode?: "open" | "closed";
   active?: boolean;
 }): Promise<Project> {
