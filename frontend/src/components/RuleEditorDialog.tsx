@@ -278,7 +278,7 @@ export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false
               <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Keywords</Label>
               <Textarea
                 value={Array.isArray(parsedConfig.keywords) ? (parsedConfig.keywords as string[]).join('\n') : ''}
-                onChange={(e) => updateConfig({ keywords: e.target.value.split('\n').filter((k) => k.trim()) })}
+                onChange={(e) => updateConfig({ keywords: e.target.value.split('\n') })}
                 placeholder="One keyword per line"
                 className="font-mono text-xs min-h-[80px]"
                 disabled={readOnly}
