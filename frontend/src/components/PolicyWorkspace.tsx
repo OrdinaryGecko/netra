@@ -203,13 +203,16 @@ export function PolicyWorkspace() {
           </DialogHeader>
           <div className="space-y-2 py-2">
             <Label className="font-mono text-xs uppercase tracking-wider">Version name</Label>
-            <Input
-              value={cloneVersionName}
-              onChange={(e) => setCloneVersionName(e.target.value)}
-              placeholder="e.g. 2, v2-safety, hotfix-1"
-              className="font-mono text-sm"
-              disabled={cloneMutation.isPending}
-            />
+            <div className="flex items-center gap-0">
+              <span className="font-mono text-sm text-muted-foreground px-2 py-1.5 border border-r-0 rounded-l-md bg-muted">v</span>
+              <Input
+                value={cloneVersionName}
+                onChange={(e) => setCloneVersionName(e.target.value)}
+                placeholder="e.g. 2, 2-safety, hotfix-1"
+                className="font-mono text-sm rounded-l-none"
+                disabled={cloneMutation.isPending}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCloneOpen(false)} className="font-mono text-xs" disabled={cloneMutation.isPending}>

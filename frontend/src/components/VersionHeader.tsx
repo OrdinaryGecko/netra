@@ -68,7 +68,10 @@ export function VersionHeader({ version, onPublish, onClone }: VersionHeaderProp
             {editing ? (
               <div className="space-y-2 max-w-md">
                 <div className="flex items-center gap-2">
-                  <Input value={editVersion} onChange={(e) => setEditVersion(e.target.value)} className="font-mono text-xs h-7 w-32" placeholder="Version" />
+                  <div className="flex items-center gap-0">
+                    <span className="font-mono text-xs text-muted-foreground px-1.5 py-1 border border-r-0 rounded-l-md bg-muted h-7 flex items-center">v</span>
+                    <Input value={editVersion} onChange={(e) => setEditVersion(e.target.value)} className="font-mono text-xs h-7 w-28 rounded-l-none" placeholder="Version" />
+                  </div>
                   <StatusBadge status={version.status} />
                 </div>
                 <Input value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className="font-mono text-xs h-7" placeholder="Description" />
