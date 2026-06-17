@@ -49,6 +49,50 @@ module Providers
       raise Guardrails::ProviderError, "Provider unreachable: #{e.message}"
     end
 
+    def stream(messages:, &block)
+      raise Guardrails::ProviderError, "Provider API key is not configured" if @api_key.blank?
+
+      uri = URI("#{@base_url}/chat/completions")
+      body = build_body(messages).merge(stream: true)
+
+      request = Net::HTTP::Post.new(uri)
+      request["Authorization"] = "Bearer #{@api_key}"
+      request["Content-Type"] = "application/json"
+      request.body = body.to_json
+
+      Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == "https") do |http|
+        http.open_timeout = 10
+        http.read_timeout = 60
+
+        http.request(request) do |response|
+          unless response.is_a?(Net::HTTPSuccess)
+            body = response.read_body
+            parsed = JSON.parse(body) rescue {}
+            raise Guardrails::ProviderError, parsed.dig("error", "message") || "Provider request failed (#{response.code})"
+          end
+
+          buffer = ""
+          response.read_body do |chunk|
+            buffer += chunk
+            while (line_end = buffer.index("\n"))
+              line = buffer.slice!(0, line_end + 1).strip
+              next unless line.start_with?("data: ")
+              data = line.sub("data: ", "")
+              next if data == "[DONE]"
+
+              parsed = JSON.parse(data) rescue next
+              content = parsed.dig("choices", 0, "delta", "content")
+              block.call(content, data) if content
+            end
+          end
+        end
+      end
+    rescue Net::OpenTimeout, Net::ReadTimeout => e
+      raise Guardrails::ProviderError, "Provider timeout: #{e.message}"
+    rescue SocketError, Errno::ECONNREFUSED => e
+      raise Guardrails::ProviderError, "Provider unreachable: #{e.message}"
+    end
+
     private
 
     def build_body(messages)

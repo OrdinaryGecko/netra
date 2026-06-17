@@ -1,18 +1,16 @@
 module V1
   class ChatCompletionsController < BaseController
-    before_action :authenticate_api_key!
+    include ActionController::Live
+    skip_before_action :verify_authenticity_token
+    before_action :set_current_from_middleware!
 
     def create
       if chat_completion_params[:stream]
-        return render_openai_error(
-          "Streaming is not supported yet",
-          status: :unprocessable_entity,
-          code: "stream_not_supported"
-        )
+        return handle_streaming
       end
 
       result = Guardrails::EvaluationPipeline.call(
-        api_key: Current.api_key,
+        api_key: @api_key,
         client_application: client_application,
         agent: agent,
         request_payload: normalized_payload
@@ -47,8 +45,67 @@ module V1
 
     private
 
+    def handle_streaming
+      # Capture context before entering stream (Live thread may lose it)
+      tenant = Apartment::Tenant.current
+      api_key = @api_key
+      project = @project || api_key.project_context
+      client_app = client_application
+      agent_ref = agent
+      payload = normalized_payload.merge(provider: project&.upstream_provider.presence || normalized_payload[:provider])
+
+      response.headers["Content-Type"] = "text/event-stream"
+      response.headers["Cache-Control"] = "no-cache"
+      response.headers["X-Accel-Buffering"] = "no"
+
+      sse = ActionController::Live::SSE.new(response.stream)
+
+      Apartment::Tenant.switch(tenant) do
+        pipeline = Guardrails::StreamingEvaluationPipeline.new(
+          api_key: api_key,
+          client_application: client_app,
+          agent: agent_ref,
+          request_payload: payload,
+          project: project
+        )
+
+        result = pipeline.call do |event_type, data|
+          case event_type
+          when :chunk
+            response.stream.write("data: #{data}\n\n")
+          when :error
+            response.stream.write("data: #{data}\n\n")
+          when :done
+            response.stream.write("data: [DONE]\n\n")
+          end
+        end
+
+        if result[:blocked] && result[:reasons].present?
+          response.stream.write("data: #{({ error: { message: "Request blocked: #{result[:reasons].join(', ')}", code: 'guardrails_blocked', reasons: result[:reasons] } }).to_json}\n\n")
+        end
+      end
+    rescue Guardrails::PolicyNotFoundError => e
+      response.stream.write("data: #{({ error: { message: e.message, code: 'policy_not_found' } }).to_json}\n\n")
+    rescue Guardrails::ProviderError => e
+      response.stream.write("data: #{({ error: { message: e.message, code: 'provider_error' } }).to_json}\n\n")
+    rescue Guardrails::ValidationError => e
+      response.stream.write("data: #{({ error: { message: e.errors.join(', '), code: 'invalid_request' } }).to_json}\n\n")
+    rescue => e
+      response.stream.write("data: #{({ error: { message: e.message, code: 'internal_error' } }).to_json}\n\n") rescue nil
+    ensure
+      response.stream.close
+    end
+
+    def set_current_from_middleware!
+      @api_key = request.env["netra.api_key"]
+      @project = request.env["netra.project"]
+      @client_app = @api_key&.client_application
+      Current.api_key = @api_key
+      Current.project = @project
+    end
+
     def client_application
-      Current.api_key.client_application
+      @client_app
     end
 
     def agent

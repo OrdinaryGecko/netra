@@ -41,12 +41,12 @@ module OpenAi
 
     def usage_payload
       raw_usage = provider_response.dig(:raw, "usage") || provider_response.dig("raw", "usage")
-      return raw_usage if raw_usage.present?
+      return nil unless raw_usage
 
       {
-        prompt_tokens: nil,
-        completion_tokens: nil,
-        total_tokens: nil
+        prompt_tokens: raw_usage["prompt_tokens"],
+        completion_tokens: raw_usage["completion_tokens"],
+        total_tokens: raw_usage["total_tokens"]
       }
     end
   end
