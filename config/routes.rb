@@ -11,6 +11,11 @@ Rails.application.routes.draw do
 
   namespace :v1 do
     post :guarded_completions, to: "guarded_completions#create"
+    post "chat/completions", to: "stream_chat_completions#create", constraints: ->(req) {
+      body = JSON.parse(req.body.read) rescue {}
+      req.body.rewind
+      body["stream"] == true
+    }
     post "chat/completions", to: "chat_completions#create"
 
     namespace :admin do
