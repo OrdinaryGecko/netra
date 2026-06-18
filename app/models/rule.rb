@@ -17,6 +17,7 @@ class Rule < ApplicationRecord
   validates :stage, inclusion: { in: STAGES }
   validates :action, inclusion: { in: ACTIONS }
   validate :action_allowed_for_kind
+  validate :mask_not_allowed_on_output
   validate :policy_version_must_be_draft
 
   before_destroy :ensure_policy_version_mutable!
@@ -32,6 +33,12 @@ class Rule < ApplicationRecord
     return if allowed.nil? || allowed.include?(action)
 
     errors.add(:action, "#{action} is not valid for #{kind} rules")
+  end
+
+  def mask_not_allowed_on_output
+    return unless action == "mask" && stage == "output"
+
+    errors.add(:action, "mask is not supported on output stage")
   end
 
   def policy_version_must_be_draft

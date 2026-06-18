@@ -220,7 +220,9 @@ export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false
               <Select value={form.action} onValueChange={(v) => setForm({ ...form, action: v as RuleAction })} disabled={readOnly}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {ALLOWED_ACTIONS_BY_KIND[form.kind as RuleKind]?.map((action) => (
+                  {ALLOWED_ACTIONS_BY_KIND[form.kind as RuleKind]
+                    ?.filter((action) => !(action === 'mask' && form.stage === 'output'))
+                    .map((action) => (
                     <SelectItem key={action} value={action}>
                       {action === 'log_only' ? 'Log Only' : action.charAt(0).toUpperCase() + action.slice(1)}
                     </SelectItem>

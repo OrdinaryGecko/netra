@@ -17,7 +17,7 @@ class AdminRulesTest < ActionDispatch::IntegrationTest
 
   test "creates updates and destroys a rule" do
     post "/v1/admin/rules",
-      params: { rule: { policy_version_id: @policy_version.id, name: "mask-pii", kind: "pii_detector", stage: "output", action: "mask", priority: 20, enabled: true, config: {} } },
+      params: { rule: { policy_version_id: @policy_version.id, name: "detect-pii", kind: "pii_detector", stage: "output", action: "block", priority: 20, enabled: true, config: {} } },
       as: :json, headers: @headers
 
     assert_response :created
