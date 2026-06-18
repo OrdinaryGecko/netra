@@ -20,6 +20,7 @@ class ApiKey < ApplicationRecord
       project:,
       name:,
       token_digest: digest(plaintext),
+      token_hint: plaintext.last(6),
       access_level:
     )
 

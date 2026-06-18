@@ -117,7 +117,7 @@ export function ApiKeysPanel({ projectId }: ApiKeysPanelProps) {
                       {!key.active && <Badge variant="outline" className="font-mono text-[10px]">Revoked</Badge>}
                     </div>
                     <div className="font-mono text-[10px] text-muted-foreground mt-0.5">
-                      {key.token_preview} · Created {new Date(key.created_at).toLocaleDateString()}
+                      {key.token_hint && <>{key.token_hint} · </>}Created {new Date(key.created_at).toLocaleDateString()}
                       {key.last_used_at && ` · Last used ${new Date(key.last_used_at).toLocaleDateString()}`}
                     </div>
                   </div>

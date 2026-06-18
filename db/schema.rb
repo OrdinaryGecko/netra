@@ -36,6 +36,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_053637) do
     t.string "name", null: false
     t.bigint "project_id"
     t.string "token_digest", null: false
+    t.string "token_hint"
     t.datetime "updated_at", null: false
     t.index ["access_level"], name: "index_api_keys_on_access_level"
     t.index ["client_application_id"], name: "index_api_keys_on_client_application_id"

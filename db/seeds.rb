@@ -76,6 +76,6 @@ Apartment::Tenant.switch(organization.slug) do
   # Create runtime API key
   unless client_application.api_keys.exists?(name: "Seeded runtime key")
     _, plaintext = ApiKey.issue!(client_application: client_application, project: project, name: "Seeded runtime key")
-    puts "Seeded runtime API key: #{plaintext}"
+    puts "Seeded runtime API key for '#{project.name}': #{plaintext}"
   end
 end

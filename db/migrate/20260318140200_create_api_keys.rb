@@ -4,6 +4,7 @@ class CreateApiKeys < ActiveRecord::Migration[8.1]
       t.references :client_application, null: false, foreign_key: true
       t.string :name, null: false
       t.string :token_digest, null: false
+      t.string :token_hint
       t.boolean :active, null: false, default: true
       t.datetime :last_used_at
 

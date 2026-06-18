@@ -606,7 +606,7 @@ export type ApiKeyResponse = {
   active: boolean;
   last_used_at: string | null;
   created_at: string;
-  token_preview: string;
+  token_hint?: string | null;
   token?: string;
 };
 

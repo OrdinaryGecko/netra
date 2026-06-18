@@ -51,11 +51,12 @@ module V1
     end
 
     def normalized_payload
+      project = Current.project
       {
         application_key: client_application.key,
         agent_identifier: agent&.identifier,
         environment: request.headers["X-Netra-Environment"].to_s.presence || "development",
-        provider: request.headers["X-Netra-Provider"].to_s.presence || "openai",
+        provider: request.headers["X-Netra-Provider"].to_s.presence || project&.upstream_provider.presence || "openai",
         model: chat_completion_params[:model],
         metadata: {},
         options: normalized_options,

@@ -43,7 +43,7 @@ module V1
           active: key.active,
           last_used_at: key.last_used_at,
           created_at: key.created_at,
-          token_preview: "••••#{key.token_digest.last(8)}"
+          token_hint: key.token_hint ? "••••#{key.token_hint}" : nil
         }
       end
     end
