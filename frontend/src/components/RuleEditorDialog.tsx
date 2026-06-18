@@ -87,24 +87,29 @@ const ruleScopes: Array<{ value: RuleScope; label: string }> = [
 
 export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false }: RuleEditorDialogProps) {
   const [form, setForm] = useState<Omit<Rule, 'id'> & { id?: string }>(defaultRule);
-  const [configStr, setConfigStr] = useState('{}');
 
-  const parsedConfig = (() => {
-    try {
-      return JSON.parse(configStr) as Record<string, unknown>;
-    } catch {
-      return {};
-    }
-  })();
-  const selectedScope = (parsedConfig.scope as RuleScope | undefined) || 'latest_user_message';
+  // Structured config fields
+  const [maxChars, setMaxChars] = useState(4000);
+  const [keywords, setKeywords] = useState('');
+  const [replacement, setReplacement] = useState('');
+  const [scope, setScope] = useState<RuleScope>('latest_user_message');
+  const [messageCount, setMessageCount] = useState(4);
 
   useEffect(() => {
     if (rule) {
       setForm(rule);
-      setConfigStr(JSON.stringify(rule.config, null, 2));
+      setMaxChars(Number(rule.config.max || 4000));
+      setKeywords(Array.isArray(rule.config.keywords) ? (rule.config.keywords as string[]).join('\n') : '');
+      setReplacement((rule.config.replacement as string) || '');
+      setScope((rule.config.scope as RuleScope) || 'latest_user_message');
+      setMessageCount(Number(rule.config.message_count || 4));
     } else {
       setForm(defaultRule);
-      setConfigStr(JSON.stringify(defaultRule.config, null, 2));
+      setMaxChars(4000);
+      setKeywords('ignore previous instructions\nreveal system prompt');
+      setReplacement('');
+      setScope('latest_user_message');
+      setMessageCount(4);
     }
   }, [rule, open]);
 
@@ -121,48 +126,35 @@ export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false
       action: template.action,
       config: template.config,
     }));
-    setConfigStr(JSON.stringify(template.config, null, 2));
+    setMaxChars(Number(template.config.max || 4000));
+    setKeywords(Array.isArray(template.config.keywords) ? (template.config.keywords as string[]).join('\n') : '');
+    setReplacement('');
+    setScope((template.config.scope as RuleScope) || 'latest_user_message');
   };
 
-  const updateConfig = (updates: Record<string, unknown>) => {
-    const nextConfig = {
-      ...parsedConfig,
-      ...updates,
-    };
+  const buildConfig = (): Record<string, unknown> => {
+    const config: Record<string, unknown> = {};
 
-    setForm((currentForm) => ({
-      ...currentForm,
-      config: nextConfig,
-    }));
-    setConfigStr(JSON.stringify(nextConfig, null, 2));
-  };
-
-  const handleScopeChange = (scope: RuleScope) => {
-    const nextConfig = {
-      ...parsedConfig,
-      scope,
-    };
-
-    if (scope === 'recent_messages') {
-      nextConfig.message_count = parsedConfig.message_count || 4;
-    } else {
-      delete nextConfig.message_count;
+    if (form.kind === 'max_message_chars') {
+      config.max = maxChars;
+    }
+    if (form.kind === 'keyword_detector') {
+      config.keywords = keywords.split('\n').filter((k) => k.trim());
+      if (form.action === 'mask' && replacement) {
+        config.replacement = replacement;
+      }
+    }
+    if (form.stage === 'input') {
+      config.scope = scope;
+      if (scope === 'recent_messages') {
+        config.message_count = messageCount;
+      }
     }
 
-    setForm((currentForm) => ({
-      ...currentForm,
-      config: nextConfig,
-    }));
-    setConfigStr(JSON.stringify(nextConfig, null, 2));
+    return config;
   };
 
   const handleSave = () => {
-    let parsedConfig: Record<string, unknown> = {};
-    try {
-      parsedConfig = JSON.parse(configStr);
-    } catch {
-      return;
-    }
     onSave({
       id: form.id || `r-${Date.now()}`,
       name: form.name || 'Untitled Rule',
@@ -171,7 +163,7 @@ export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false
       action: form.action as RuleAction,
       priority: form.priority ?? 1,
       enabled: form.enabled ?? true,
-      config: parsedConfig,
+      config: buildConfig(),
     });
     onClose();
   };
@@ -239,23 +231,23 @@ export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Scope</Label>
-                <Select value={selectedScope} onValueChange={(v) => handleScopeChange(v as RuleScope)} disabled={readOnly}>
+                <Select value={scope} onValueChange={(v) => setScope(v as RuleScope)} disabled={readOnly}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {ruleScopes.map((scope) => (
-                      <SelectItem key={scope.value} value={scope.value}>{scope.label}</SelectItem>
+                    {ruleScopes.map((s) => (
+                      <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              {selectedScope === 'recent_messages' && (
+              {scope === 'recent_messages' && (
                 <div className="space-y-1.5">
                   <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Message Count</Label>
                   <Input
                     type="number"
                     min={1}
-                    value={Number(parsedConfig.message_count || 4)}
-                    onChange={(e) => updateConfig({ message_count: parseInt(e.target.value) || 1 })}
+                    value={messageCount}
+                    onChange={(e) => setMessageCount(parseInt(e.target.value) || 1)}
                     disabled={readOnly}
                   />
                 </div>
@@ -268,8 +260,8 @@ export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false
               <Input
                 type="number"
                 min={1}
-                value={Number(parsedConfig.max || 4000)}
-                onChange={(e) => updateConfig({ max: parseInt(e.target.value) || 4000 })}
+                value={maxChars}
+                onChange={(e) => setMaxChars(parseInt(e.target.value) || 4000)}
                 className="font-mono text-xs"
                 disabled={readOnly}
               />
@@ -279,8 +271,8 @@ export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false
             <div className="space-y-1.5">
               <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Keywords</Label>
               <Textarea
-                value={Array.isArray(parsedConfig.keywords) ? (parsedConfig.keywords as string[]).join('\n') : ''}
-                onChange={(e) => updateConfig({ keywords: e.target.value.split('\n') })}
+                value={keywords}
+                onChange={(e) => setKeywords(e.target.value)}
                 placeholder="One keyword per line"
                 className="font-mono text-xs min-h-[80px]"
                 disabled={readOnly}
@@ -292,8 +284,8 @@ export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false
             <div className="space-y-1.5">
               <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Replacement word</Label>
               <Input
-                value={(parsedConfig.replacement as string) || ''}
-                onChange={(e) => updateConfig({ replacement: e.target.value || undefined })}
+                value={replacement}
+                onChange={(e) => setReplacement(e.target.value)}
                 placeholder="[REDACTED]"
                 className="font-mono text-xs"
                 disabled={readOnly}
@@ -303,7 +295,21 @@ export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false
           )}
           <div className="space-y-1.5">
             <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Config (JSON)</Label>
-            <Textarea className="font-mono text-xs min-h-[100px]" value={configStr} onChange={(e) => setConfigStr(e.target.value)} disabled={readOnly} />
+            <Textarea
+              className="font-mono text-xs min-h-[80px]"
+              value={JSON.stringify(buildConfig(), null, 2)}
+              onChange={(e) => {
+                try {
+                  const parsed = JSON.parse(e.target.value);
+                  if (parsed.max !== undefined) setMaxChars(Number(parsed.max));
+                  if (parsed.keywords !== undefined) setKeywords(Array.isArray(parsed.keywords) ? parsed.keywords.join('\n') : '');
+                  if (parsed.replacement !== undefined) setReplacement(String(parsed.replacement || ''));
+                  if (parsed.scope !== undefined) setScope(parsed.scope as RuleScope);
+                  if (parsed.message_count !== undefined) setMessageCount(Number(parsed.message_count));
+                } catch { /* ignore invalid JSON while typing */ }
+              }}
+              disabled={readOnly}
+            />
           </div>
         </div>
         <DialogFooter>
