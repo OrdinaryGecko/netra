@@ -6,7 +6,6 @@ type BackendProject = {
   key: string;
   upstream_base_url?: string | null;
   upstream_provider?: string | null;
-  fail_mode: "open" | "closed";
   active: boolean;
   policy_sets_count: number;
 };
@@ -171,7 +170,6 @@ function mapProject(project: BackendProject): Project {
     key: project.key,
     upstreamBaseUrl: project.upstream_base_url,
     upstreamProvider: project.upstream_provider,
-    failMode: project.fail_mode,
     active: project.active,
     organization: { id: "", name: "", slug: "" },
     policySetsCount: project.policy_sets_count,
@@ -294,7 +292,6 @@ export async function createProject(params: {
       project: {
         name: params.name,
         key: baseKey,
-        fail_mode: "open",
         active: true,
         upstream_provider: "stub",
         upstream_base_url: null,
@@ -491,7 +488,6 @@ export async function updateProject(projectId: string, params: {
   upstream_provider?: string | null;
   upstream_base_url?: string | null;
   encrypted_upstream_key?: string;
-  fail_mode?: "open" | "closed";
   active?: boolean;
 }): Promise<Project> {
   const payload = await request<BackendProject>(`/v1/admin/projects/${projectId}`, {

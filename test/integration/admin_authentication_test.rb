@@ -29,7 +29,7 @@ class AdminAuthenticationTest < ActionDispatch::IntegrationTest
     assert_response :success
 
     post "/v1/admin/projects",
-      params: { project: { name: "New", key: "new", fail_mode: "open" } },
+      params: { project: { name: "New", key: "new" } },
       as: :json,
       headers: auth_headers_for(viewer, "test")
     assert_response :forbidden

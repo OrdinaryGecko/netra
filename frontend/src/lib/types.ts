@@ -23,7 +23,6 @@ export interface Project {
   key: string;
   upstreamBaseUrl?: string | null;
   upstreamProvider?: string | null;
-  failMode: "open" | "closed";
   active: boolean;
   organization: Organization;
 }

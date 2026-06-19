@@ -1,5 +1,4 @@
 class Project < ApplicationRecord
-  FAIL_MODES = %w[open closed].freeze
   UPSTREAM_PROVIDERS = %w[stub openai].freeze
 
   has_many :client_applications, dependent: :nullify
@@ -9,9 +8,8 @@ class Project < ApplicationRecord
   has_many :provider_configs, dependent: :destroy
   has_many :guardrail_requests, dependent: :destroy
 
-  validates :name, :key, :fail_mode, presence: true
+  validates :name, :key, :default_environment, presence: true
   validates :key, uniqueness: true
-  validates :fail_mode, inclusion: { in: FAIL_MODES }
   validates :upstream_provider, inclusion: { in: UPSTREAM_PROVIDERS }, allow_blank: true
 
   def active_policy_set_for(environment)

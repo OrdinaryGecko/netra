@@ -70,7 +70,6 @@ module V1
           key: project.key,
           upstream_base_url: project.upstream_base_url,
           upstream_provider: project.upstream_provider,
-          fail_mode: project.fail_mode,
           active: project.active,
           policy_sets_count: project.policy_sets.size
         }
@@ -83,7 +82,6 @@ module V1
           :upstream_base_url,
           :upstream_provider,
           :encrypted_upstream_key,
-          :fail_mode,
           :active
         )
       end

@@ -22,7 +22,6 @@ export function ProjectSettingsPanel({ project }: ProjectSettingsPanelProps) {
   const [upstreamProvider, setUpstreamProvider] = useState(project.upstreamProvider || 'stub');
   const [upstreamBaseUrl, setUpstreamBaseUrl] = useState(project.upstreamBaseUrl || '');
   const [upstreamKey, setUpstreamKey] = useState('');
-  const [failMode, setFailMode] = useState(project.failMode);
   const [active, setActive] = useState(project.active);
 
   const mutation = useMutation({
@@ -31,7 +30,6 @@ export function ProjectSettingsPanel({ project }: ProjectSettingsPanelProps) {
       upstream_provider: upstreamProvider,
       upstream_base_url: upstreamBaseUrl || null,
       encrypted_upstream_key: upstreamKey || undefined,
-      fail_mode: failMode,
       active,
     }),
     onSuccess: async () => {
@@ -46,7 +44,6 @@ export function ProjectSettingsPanel({ project }: ProjectSettingsPanelProps) {
     || upstreamProvider !== (project.upstreamProvider || 'stub')
     || upstreamBaseUrl !== (project.upstreamBaseUrl || '')
     || upstreamKey !== ''
-    || failMode !== project.failMode
     || active !== project.active;
 
   return (
@@ -76,16 +73,6 @@ export function ProjectSettingsPanel({ project }: ProjectSettingsPanelProps) {
               <SelectContent>
                 <SelectItem value="stub" className="font-mono text-xs">Stub (testing)</SelectItem>
                 <SelectItem value="openai" className="font-mono text-xs">OpenAI</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Fail mode</Label>
-            <Select value={failMode} onValueChange={(v) => setFailMode(v as 'open' | 'closed')} disabled={mutation.isPending}>
-              <SelectTrigger className="font-mono text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="open" className="font-mono text-xs">Open (allow on error)</SelectItem>
-                <SelectItem value="closed" className="font-mono text-xs">Closed (block on error)</SelectItem>
               </SelectContent>
             </Select>
           </div>
