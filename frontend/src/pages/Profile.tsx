@@ -26,7 +26,6 @@ export default function Profile() {
     mutationFn: () => updateProfile({ name: name.trim(), email: email.trim() }),
     onSuccess: () => {
       updateUser({ name: name.trim() });
-      setProfilePassword('');
       if (emailChanged) {
         toast.success('Confirmation email sent to your new address. Check your inbox.');
         setEmail(user?.email || '');
