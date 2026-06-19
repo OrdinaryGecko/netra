@@ -161,7 +161,6 @@ function mapPolicyVersion(policyVersion: BackendPolicyVersion): PolicyVersion {
 function mapProject(project: BackendProject): Project {
   return {
     id: String(project.id),
-    organizationId: "",
     name: project.name,
     slug: project.key,
     description: project.upstream_provider
@@ -171,7 +170,6 @@ function mapProject(project: BackendProject): Project {
     upstreamBaseUrl: project.upstream_base_url,
     upstreamProvider: project.upstream_provider,
     active: project.active,
-    organization: { id: "", name: "", slug: "" },
     policySetsCount: project.policy_sets_count,
   };
 }

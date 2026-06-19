@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, ReactNode, useCallback } from "react";
 import { clearSessionToken, fetchProjects, login, logout, storedSessionToken, storeOrgSlug, storeSessionToken } from "@/lib/api";
-import { AdminSession, Membership, Organization, Project, User } from "@/lib/types";
+import { AdminSession, Project, User } from "@/lib/types";
 
 const USER_STORAGE_KEY = "netra.user";
 
@@ -23,8 +23,6 @@ interface AuthContextType {
   isLoading: boolean;
   session: AdminSession | null;
   user: User | null;
-  organization: Organization | null;
-  membership: Membership | null;
   projects: Project[];
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -42,9 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const buildSession = useCallback((userData: { id: string; email: string; name: string; role: string }): AdminSession => {
     return {
-      user: { id: userData.id, email: userData.email, name: userData.name },
-      organization: { id: "1", name: "", slug: "" },
-      membership: { id: "1", userId: userData.id, organizationId: "1", role: userData.role as Membership["role"] },
+      user: { id: userData.id, email: userData.email, name: userData.name, role: userData.role as User["role"] },
     };
   }, []);
 
@@ -100,14 +96,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession((prev) => {
       if (!prev) return prev;
       const updatedUser = { ...prev.user, ...data };
-      storeUser({ ...updatedUser, role: prev.membership.role });
+      storeUser({ id: updatedUser.id, email: updatedUser.email, name: updatedUser.name, role: updatedUser.role });
       return { ...prev, user: updatedUser };
     });
   }, []);
 
   const user = session?.user || null;
-  const organization = session?.organization || null;
-  const membership = session?.membership || null;
 
   const value = useMemo(
     () => ({
@@ -115,15 +109,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       session,
       user,
-      organization,
-      membership,
       projects,
       signIn,
       signOut,
       refreshProjects,
       updateUser,
     }),
-    [isAuthenticated, isLoading, session, user, organization, membership, projects, signIn, signOut, refreshProjects, updateUser]
+    [isAuthenticated, isLoading, session, user, projects, signIn, signOut, refreshProjects, updateUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -150,8 +142,8 @@ const ROLE_LEVELS: Record<string, number> = {
 };
 
 export function usePermissions() {
-  const { membership } = useAuth();
-  const role = membership?.role || "viewer";
+  const { user } = useAuth();
+  const role = user?.role || "viewer";
   const level = ROLE_LEVELS[role] || 0;
 
   return {

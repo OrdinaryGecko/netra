@@ -6,15 +6,8 @@ export type RuleScope = "latest_user_message" | "latest_message" | "all_user_mes
 
 export type MembershipRole = "owner" | "admin" | "editor" | "viewer" | "auditor";
 
-export interface Organization {
-  id: string;
-  name: string;
-  slug: string;
-}
-
 export interface Project {
   id: string;
-  organizationId: string;
   name: string;
   slug: string;
   description: string;
@@ -24,26 +17,17 @@ export interface Project {
   upstreamBaseUrl?: string | null;
   upstreamProvider?: string | null;
   active: boolean;
-  organization: Organization;
 }
 
 export interface User {
   id: string;
   email: string;
   name: string;
-}
-
-export interface Membership {
-  id: string;
-  userId: string;
-  organizationId: string;
   role: MembershipRole;
 }
 
 export interface AdminSession {
   user: User;
-  organization: Organization;
-  membership: Membership;
 }
 
 export interface Rule {

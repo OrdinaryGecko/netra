@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { AppHeader } from '@/components/AppHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FolderKanban, ChevronRight, Building2, Users, Plus, Loader2 } from 'lucide-react';
+import { FolderKanban, ChevronRight, Users, Plus, Loader2 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import { usePermissions } from '@/contexts/AuthContext';
 
 export default function Projects() {
-  const { organization, projects, membership, refreshProjects } = useAuth();
+  const { projects, user, refreshProjects } = useAuth();
   const { canManage } = usePermissions();
   const navigate = useNavigate();
 
@@ -58,16 +58,14 @@ export default function Projects() {
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-              <Building2 className="h-5 w-5 text-primary" />
+              <FolderKanban className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold font-mono">{organization?.name}</h1>
+              <h1 className="text-2xl font-bold font-mono">Projects</h1>
               <div className="flex items-center gap-3 text-xs font-mono text-muted-foreground mt-1">
-                <span>Organization</span>
-                <span>·</span>
                 <span className="flex items-center gap-1">
                   <Users className="h-3 w-3" />
-                  Your role: <span className="text-foreground">{membership?.role}</span>
+                  Your role: <span className="text-foreground">{user?.role}</span>
                 </span>
               </div>
             </div>
