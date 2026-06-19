@@ -1,5 +1,7 @@
 module Guardrails
   class EvaluationPipeline
+    include PipelineBase
+
     def self.call(api_key:, client_application:, agent:, request_payload:, project: nil)
       new(api_key:, client_application:, agent:, request_payload:, project:).call
     end
@@ -15,55 +17,34 @@ module Guardrails
 
     def call
       RequestValidator.call!(@request_payload)
+      resolve_rules
 
-      resolved_sets = PolicyResolver.call!(
-        client_application: @client_application,
-        project: @project,
-        environment: environment
-      )
-
-      policy_versions = resolved_sets.map { |rs| rs[:policy_version] }
-      all_rules = composed_rules(resolved_sets)
-
-      input_rules = all_rules.select { |r| r.stage == "input" }
-      output_rules = all_rules.select { |r| r.stage == "output" }
-
-      request_record = build_request!(policy_versions:)
-      input_decision = evaluate_stage!(rules: input_rules, content: combined_input, messages: request_messages)
+      request_record = build_request!(policy_versions: @policy_versions)
+      input_decision = evaluate_stage!(rules: @input_rules, content: combined_input, messages: request_messages)
       persist_evaluations!(request_record:, evaluations: input_decision[:evaluations])
 
       if input_decision[:blocked]
-        finalize_block!(request_record:, policy_versions:, reasons: input_decision[:reasons])
+        finalize_block!(request_record:, policy_versions: @policy_versions, reasons: input_decision[:reasons])
       else
-        forwarded_messages = if input_decision[:masked]
-          mask_messages(request_messages, input_decision[:mask_keywords], input_decision[:mask_replacement])
-        else
-          request_messages
-        end
+        forwarded_messages = apply_input_masking(input_decision)
 
-        provider_response = Providers::Factory.build(
-          provider: @request_payload[:provider],
-          model: @request_payload[:model],
-          options: @request_payload[:options] || {},
-          base_url: @project&.upstream_base_url,
-          api_key: @project&.encrypted_upstream_key
-        ).complete(messages: forwarded_messages)
+        provider_response = build_provider.complete(messages: forwarded_messages)
 
         output_text = provider_response[:content]
-        output_decision = evaluate_stage!(rules: output_rules, content: output_text, provider_response:)
+        output_decision = evaluate_stage!(rules: @output_rules, content: output_text, provider_response:)
         persist_evaluations!(request_record:, evaluations: output_decision[:evaluations])
 
         if output_decision[:blocked]
           request_record.update!(response_payload: provider_response)
           finalize_block!(
             request_record:,
-            policy_versions:,
+            policy_versions: @policy_versions,
             reasons: input_decision[:reasons] + output_decision[:reasons]
           )
         else
           finalize_success!(
             request_record:,
-            policy_versions:,
+            policy_versions: @policy_versions,
             provider_response: masked_response(provider_response, output_text, output_decision[:masked], mask_keywords: output_decision[:mask_keywords], mask_replacement: output_decision[:mask_replacement]),
             reasons: input_decision[:reasons] + output_decision[:reasons],
             masked: output_decision[:masked]
@@ -73,14 +54,6 @@ module Guardrails
     end
 
     private
-
-    def composed_rules(resolved_sets)
-      resolved_sets.flat_map do |rs|
-        rs[:policy_version].rules.enabled.map { |rule| [rs[:policy_set], rule] }
-      end
-        .sort_by { |set, rule| [set.priority, rule.priority] }
-        .map(&:last)
-    end
 
     def build_request!(policy_versions:)
       GuardrailRequest.create!(
@@ -111,7 +84,7 @@ module Guardrails
       Evaluator.call(
         rules:,
         content:,
-        options: @request_payload[:options] || {},
+        options:,
         provider_response:,
         messages:
       )
@@ -170,18 +143,6 @@ module Guardrails
       )
     end
 
-    def request_messages
-      @request_payload[:messages]
-    end
-
-    def combined_input
-      request_messages.map { |message| message[:content] }.join("\n")
-    end
-
-    def environment
-      @request_payload[:environment]
-    end
-
     def provider_config
       provider_configs = @project&.provider_configs || @client_application.provider_configs
       provider_configs.find_by(provider: @request_payload[:provider], active: true)
@@ -191,12 +152,6 @@ module Guardrails
       return provider_response unless masked
 
       provider_response.merge(content: Masker.mask(output_text, keywords: mask_keywords, replacement: mask_replacement))
-    end
-
-    def mask_messages(messages, keywords, replacement = "[REDACTED]")
-      messages.map do |msg|
-        msg.merge(content: Masker.mask(msg[:content].to_s, keywords: keywords, replacement: replacement))
-      end
     end
   end
 end
