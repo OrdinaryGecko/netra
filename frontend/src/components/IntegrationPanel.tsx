@@ -11,12 +11,13 @@ interface IntegrationPanelProps {
   project: Project;
 }
 
-const KEY_PLACEHOLDER = 'nrt_xxxxxxxxxxxxxxxxxxxxxxxxxxxx';
+const KEY_PLACEHOLDER = 'YOUR_RUNTIME_API_KEY';
 
 export function IntegrationPanel({ project }: IntegrationPanelProps) {
   const [baseUrl, setBaseUrl] = useState('http://localhost:3000');
 
   const provider = project.upstreamProvider || 'openai';
+  const orgSlug = window.location.hostname.split('.')[0] || 'default';
 
   const pythonExample = `from openai import OpenAI
 
@@ -24,38 +25,48 @@ client = OpenAI(
     api_key="${KEY_PLACEHOLDER}",
     base_url="${baseUrl}/v1",
     default_headers={
+        "X-Netra-Org-Slug": "${orgSlug}",
         "X-Netra-Environment": "production",
-        "X-Netra-Provider": "${provider}",
-        # "X-Netra-Agent-Identifier": "support-bot",
     },
 )
 
+# Non-streaming
 response = client.chat.completions.create(
     model="gpt-4o-mini",
     messages=[{"role": "user", "content": "Hello"}],
 )
-print(response.choices[0].message.content)`;
+print(response.choices[0].message.content)
 
-  const curlOpenAI = `curl ${baseUrl}/v1/chat/completions \\
+# Streaming
+stream = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "Hello"}],
+    stream=True,
+)
+for chunk in stream:
+    content = chunk.choices[0].delta.content
+    if content:
+        print(content, end="", flush=True)`;
+
+  const curlExample = `curl ${baseUrl}/v1/chat/completions \\
   -H "Authorization: Bearer ${KEY_PLACEHOLDER}" \\
   -H "Content-Type: application/json" \\
+  -H "X-Netra-Org-Slug: ${orgSlug}" \\
   -H "X-Netra-Environment: production" \\
-  -H "X-Netra-Provider: ${provider}" \\
   -d '{
     "model": "gpt-4o-mini",
     "messages": [{"role": "user", "content": "Hello"}]
   }'`;
 
-  const curlNative = `curl ${baseUrl}/v1/guarded_completions \\
-  -H "X-Api-Key: ${KEY_PLACEHOLDER}" \\
+  const curlStreamExample = `curl -N ${baseUrl}/v1/chat/completions \\
+  -H "Authorization: Bearer ${KEY_PLACEHOLDER}" \\
   -H "Content-Type: application/json" \\
+  -H "X-Netra-Org-Slug: ${orgSlug}" \\
+  -H "X-Netra-Environment: production" \\
   -d '{
-    "application_key": "${project.key}",
-    "environment": "production",
-    "provider": "${provider}",
     "model": "gpt-4o-mini",
     "messages": [{"role": "user", "content": "Hello"}],
-    "options": {}
+    "stream": true
   }'`;
 
   return (
@@ -76,9 +87,8 @@ print(response.choices[0].message.content)`;
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <CopyField label="Project key (application_key)" value={project.key} />
+            <CopyField label="Organization slug" value={orgSlug} />
             <CopyField label="Upstream provider" value={provider} />
-            <CopyField label="X-Netra-Project-Id header" value={String(project.id)} />
           </div>
 
           <div className="space-y-1.5">
@@ -107,7 +117,7 @@ print(response.choices[0].message.content)`;
             <div>
               <CardTitle className="text-base font-mono">Runtime API key</CardTitle>
               <CardDescription className="text-xs mt-0.5">
-                Used in <code>X-Api-Key</code> or <code>Authorization: Bearer</code> headers.
+                Used in <code>Authorization: Bearer</code> or <code>X-Api-Key</code> header.
                 Create and manage keys from the <strong>API Keys</strong> tab.
               </CardDescription>
             </div>
@@ -117,15 +127,15 @@ print(response.choices[0].message.content)`;
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm font-mono">Optional headers</CardTitle>
+          <CardTitle className="text-sm font-mono">Required & optional headers</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="border rounded-md divide-y text-xs font-mono">
             {[
-              ['X-Netra-Environment', 'Set the environment for this request (e.g. production, staging, development).'],
-              ['X-Netra-Provider', 'Override the upstream provider (defaults to openai).'],
+              ['X-Netra-Org-Slug', 'Required. Your organization slug for tenant routing.'],
+              ['X-Netra-Environment', 'Set the environment for this request (e.g. production, staging, development). Defaults to development.'],
+              ['X-Netra-Provider', 'Override the upstream provider configured in project settings.'],
               ['X-Netra-Agent-Identifier', 'Tag requests with an agent identifier for analytics.'],
-              ['X-Netra-Project-Id', 'Switch project context when one runtime key has access to multiple projects.'],
             ].map(([name, desc]) => (
               <div key={name} className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-3 px-3 py-2">
                 <code className="truncate">{name}</code>
@@ -154,23 +164,17 @@ print(response.choices[0].message.content)`;
           <Tabs defaultValue="python">
             <TabsList className="font-mono text-xs">
               <TabsTrigger value="python">Python (OpenAI SDK)</TabsTrigger>
-              <TabsTrigger value="curl-openai">curl (OpenAI-compatible)</TabsTrigger>
-              <TabsTrigger value="curl-native">curl (Native Netra)</TabsTrigger>
+              <TabsTrigger value="curl">curl</TabsTrigger>
+              <TabsTrigger value="curl-stream">curl (streaming)</TabsTrigger>
             </TabsList>
             <TabsContent value="python" className="mt-3">
               <CopyField value={pythonExample} multiline />
-              <p className="font-mono text-[10px] text-muted-foreground mt-2">
-                Note: streaming (<code>stream=True</code>) is not supported yet.
-              </p>
             </TabsContent>
-            <TabsContent value="curl-openai" className="mt-3">
-              <CopyField value={curlOpenAI} multiline />
+            <TabsContent value="curl" className="mt-3">
+              <CopyField value={curlExample} multiline />
             </TabsContent>
-            <TabsContent value="curl-native" className="mt-3">
-              <CopyField value={curlNative} multiline />
-              <p className="font-mono text-[10px] text-muted-foreground mt-2">
-                The native endpoint takes <code>application_key</code> in the body instead of routing by header.
-              </p>
+            <TabsContent value="curl-stream" className="mt-3">
+              <CopyField value={curlStreamExample} multiline />
             </TabsContent>
           </Tabs>
         </CardContent>
