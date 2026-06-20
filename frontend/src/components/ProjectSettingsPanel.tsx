@@ -29,7 +29,7 @@ export function ProjectSettingsPanel({ project }: ProjectSettingsPanelProps) {
       name: name.trim(),
       upstream_provider: upstreamProvider,
       upstream_base_url: upstreamBaseUrl || null,
-      encrypted_upstream_key: upstreamKey || undefined,
+      upstream_key: upstreamKey || undefined,
       active,
     }),
     onSuccess: async () => {

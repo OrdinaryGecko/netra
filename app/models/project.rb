@@ -1,7 +1,7 @@
 class Project < ApplicationRecord
   UPSTREAM_PROVIDERS = %w[stub openai].freeze
 
-  encrypts :encrypted_upstream_key
+  encrypts :upstream_key
 
   has_many :client_applications, dependent: :nullify
   has_many :agents, dependent: :destroy

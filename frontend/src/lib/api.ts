@@ -220,6 +220,8 @@ export async function fetchPolicySets(): Promise<PolicySetSummary[]> {
     name: policySet.name,
     environment: policySet.environment,
     active: policySet.active,
+    enabled: policySet.enabled ?? true,
+    priority: policySet.priority ?? 100,
     description: String(
       policySet.policy_versions?.[0]?.definition?.description ||
       `Policy for ${policySet.environment}`
@@ -293,7 +295,7 @@ export async function createProject(params: {
         active: true,
         upstream_provider: "stub",
         upstream_base_url: null,
-        encrypted_upstream_key: null,
+        upstream_key: null,
       },
     },
   });
@@ -485,7 +487,7 @@ export async function updateProject(projectId: string, params: {
   name?: string;
   upstream_provider?: string | null;
   upstream_base_url?: string | null;
-  encrypted_upstream_key?: string;
+  upstream_key?: string;
   active?: boolean;
 }): Promise<Project> {
   const payload = await request<BackendProject>(`/v1/admin/projects/${projectId}`, {

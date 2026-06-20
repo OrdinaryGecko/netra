@@ -40,7 +40,7 @@ module Guardrails
         model: @request_payload[:model],
         options: options,
         base_url: @project&.upstream_base_url,
-        api_key: @project&.encrypted_upstream_key
+        api_key: @project&.upstream_key
       )
     end
 

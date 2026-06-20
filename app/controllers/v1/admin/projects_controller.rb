@@ -81,7 +81,7 @@ module V1
           :key,
           :upstream_base_url,
           :upstream_provider,
-          :encrypted_upstream_key,
+          :upstream_key,
           :active
         )
       end
