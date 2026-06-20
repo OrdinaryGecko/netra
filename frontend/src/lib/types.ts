@@ -16,6 +16,7 @@ export interface Project {
   key: string;
   upstreamBaseUrl?: string | null;
   upstreamProvider?: string | null;
+  defaultModel?: string | null;
   active: boolean;
 }
 

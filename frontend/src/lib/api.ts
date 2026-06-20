@@ -6,6 +6,7 @@ type BackendProject = {
   key: string;
   upstream_base_url?: string | null;
   upstream_provider?: string | null;
+  default_model?: string | null;
   active: boolean;
   policy_sets_count: number;
 };
@@ -169,6 +170,7 @@ function mapProject(project: BackendProject): Project {
     key: project.key,
     upstreamBaseUrl: project.upstream_base_url,
     upstreamProvider: project.upstream_provider,
+    defaultModel: project.default_model,
     active: project.active,
     policySetsCount: project.policy_sets_count,
   };
@@ -449,7 +451,12 @@ export async function dryRunPolicyVersion(policyVersionId: string, content: stri
   };
 }
 
-export async function dryRunProject(projectId: string, content: string, environment?: string): Promise<DryRunResult> {
+export async function dryRunProject(
+  projectId: string,
+  content: string,
+  environment?: string,
+  options?: { executeProvider?: boolean; provider?: string; model?: string }
+): Promise<DryRunResult> {
   const payload = await request<{
     status: "allowed" | "blocked";
     action: Rule["action"];
@@ -462,8 +469,9 @@ export async function dryRunProject(projectId: string, content: string, environm
     projectId,
     body: {
       environment,
-      provider: "stub",
-      model: "stub-v1",
+      provider: options?.provider || "stub",
+      model: options?.model || "stub-v1",
+      execute_provider: options?.executeProvider || false,
       messages: [
         {
           role: "user",

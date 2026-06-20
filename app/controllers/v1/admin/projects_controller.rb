@@ -70,6 +70,7 @@ module V1
           key: project.key,
           upstream_base_url: project.upstream_base_url,
           upstream_provider: project.upstream_provider,
+          default_model: project.default_model,
           active: project.active,
           policy_sets_count: project.policy_sets.size
         }
@@ -82,6 +83,7 @@ module V1
           :upstream_base_url,
           :upstream_provider,
           :upstream_key,
+          :default_model,
           :active
         )
       end

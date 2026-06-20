@@ -365,7 +365,23 @@ export default function Policies() {
           </TabsContent>
 
           <TabsContent value="dryrun" className="mt-6">
-            {projectId && <ProjectDryRunPanel projectId={projectId} />}
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm font-mono">About dry run</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-xs text-muted-foreground">
+                    <p>Send messages through the guardrails pipeline in real-time.</p>
+                    <p>Each message is evaluated against all enabled rules across your active policy sets.</p>
+                    <p>Results show the LLM response if the request is allowed, or a blocked message if not.</p>
+                  </CardContent>
+                </Card>
+              </div>
+              <div>
+                {projectId && <ProjectDryRunPanel projectId={projectId} />}
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="logs" className="mt-6">

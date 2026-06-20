@@ -22,6 +22,7 @@ export function ProjectSettingsPanel({ project }: ProjectSettingsPanelProps) {
   const [upstreamProvider, setUpstreamProvider] = useState(project.upstreamProvider || 'stub');
   const [upstreamBaseUrl, setUpstreamBaseUrl] = useState(project.upstreamBaseUrl || '');
   const [upstreamKey, setUpstreamKey] = useState('');
+  const [defaultModel, setDefaultModel] = useState(project.defaultModel || '');
   const [active, setActive] = useState(project.active);
 
   const mutation = useMutation({
@@ -30,6 +31,7 @@ export function ProjectSettingsPanel({ project }: ProjectSettingsPanelProps) {
       upstream_provider: upstreamProvider,
       upstream_base_url: upstreamBaseUrl || null,
       upstream_key: upstreamKey || undefined,
+      default_model: defaultModel || null,
       active,
     }),
     onSuccess: async () => {
@@ -44,6 +46,7 @@ export function ProjectSettingsPanel({ project }: ProjectSettingsPanelProps) {
     || upstreamProvider !== (project.upstreamProvider || 'stub')
     || upstreamBaseUrl !== (project.upstreamBaseUrl || '')
     || upstreamKey !== ''
+    || defaultModel !== (project.defaultModel || '')
     || active !== project.active;
 
   return (
@@ -83,6 +86,10 @@ export function ProjectSettingsPanel({ project }: ProjectSettingsPanelProps) {
           <div className="space-y-1.5 sm:col-span-2">
             <Label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Provider API key</Label>
             <Input type="password" value={upstreamKey} onChange={(e) => setUpstreamKey(e.target.value)} placeholder="sk-... (leave empty to keep current)" className="font-mono text-xs" disabled={mutation.isPending} />
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Default model</Label>
+            <Input value={defaultModel} onChange={(e) => setDefaultModel(e.target.value)} placeholder="gpt-4o" className="font-mono text-xs" disabled={mutation.isPending} />
           </div>
           <div className="flex items-center gap-3">
             <Switch checked={active} onCheckedChange={setActive} disabled={mutation.isPending} />
