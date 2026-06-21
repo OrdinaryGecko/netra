@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import ReactMarkdown from 'react-markdown';
 import { dryRunPolicyVersion, dryRunProject } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +12,7 @@ interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  isLoading?: boolean;
 }
 
 interface DryRunChatProps {
@@ -42,23 +44,44 @@ export function DryRunChat({ policyVersionId, projectId, environment, providerNa
       }
       return dryRunPolicyVersion(policyVersionId!, content, projectId);
     },
-    onSuccess: (result, content) => {
-      const assistantContent = result.providerResponse?.content as string || '(No response)';
-      setMessages((prev) => [
-        ...prev,
-        { id: `user-${Date.now()}`, role: 'user', content },
-        { id: `assistant-${Date.now()}`, role: 'assistant', content: assistantContent },
-      ]);
-      setInput('');
+    onSuccess: (result) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.isLoading
+            ? {
+                ...msg,
+                isLoading: false,
+                content:
+                  result.status === 'blocked'
+                    ? result.reasons.length > 0
+                      ? `Blocked: ${result.reasons.join(', ')}`
+                      : 'Blocked by guardrails'
+                    : (result.providerResponse?.content as string) || '(No response)',
+              }
+            : msg
+        )
+      );
     },
     onError: (error: Error) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.isLoading
+            ? { ...msg, isLoading: false, content: `Error: ${error.message}` }
+            : msg
+        )
+      );
       toast.error(error.message);
     },
   });
 
   const handleSend = () => {
     if (!input.trim() || mutation.isPending) return;
-    mutation.mutate(input.trim());
+    const content = input.trim();
+    const userMsg: ChatMessage = { id: `user-${Date.now()}`, role: 'user', content };
+    const assistantMsg: ChatMessage = { id: `assistant-${Date.now()}`, role: 'assistant', content: '', isLoading: true };
+    setMessages((prev) => [...prev, userMsg, assistantMsg]);
+    setInput('');
+    mutation.mutate(content);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -87,7 +110,19 @@ export function DryRunChat({ policyVersionId, projectId, environment, providerNa
                   : 'bg-muted'
               }`}
             >
-              {message.content}
+              {message.isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ReactMarkdown
+                  components={{
+                    a: ({ node, ...props }) => (
+                      <a {...props} target="_blank" rel="noopener noreferrer" className="underline text-primary hover:text-primary/80" />
+                    ),
+                  }}
+                >
+                  {message.content}
+                </ReactMarkdown>
+              )}
             </div>
           </div>
         ))}
