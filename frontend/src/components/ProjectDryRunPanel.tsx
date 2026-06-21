@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useCurrentProject } from '@/contexts/AuthContext';
-import { fetchPolicySetsForProject } from '@/lib/api';
+import { fetchPolicySetsForProject, fetchProjectProviders } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, Cpu, Info } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { DryRunChat } from './DryRunChat';
 
 interface ProjectDryRunPanelProps {
@@ -20,12 +21,22 @@ export function ProjectDryRunPanel({ projectId }: ProjectDryRunPanelProps) {
     queryFn: () => fetchPolicySetsForProject(projectId, environment),
   });
 
+  const projectProvidersQuery = useQuery({
+    queryKey: ['project-providers', projectId],
+    queryFn: () => fetchProjectProviders(projectId),
+  });
+
   const enabledSets = useMemo(
     () =>
       policySetsQuery.data?.filter(
         (ps) => ps.enabled
       ) || [],
     [policySetsQuery.data]
+  );
+
+  const defaultProvider = useMemo(
+    () => projectProvidersQuery.data?.find((pp) => pp.isDefault && pp.environment === environment),
+    [projectProvidersQuery.data, environment]
   );
 
   if (enabledSets.length === 0) {
@@ -52,16 +63,18 @@ export function ProjectDryRunPanel({ projectId }: ProjectDryRunPanelProps) {
 
   return (
     <div className="space-y-4">
-      <Select value={environment} onValueChange={setEnvironment}>
-        <SelectTrigger className="w-[160px] font-mono text-xs">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="development" className="font-mono text-xs">Development</SelectItem>
-          <SelectItem value="staging" className="font-mono text-xs">Staging</SelectItem>
-          <SelectItem value="production" className="font-mono text-xs">Production</SelectItem>
-        </SelectContent>
-      </Select>
+      <div className="flex items-center gap-2">
+        <Select value={environment} onValueChange={setEnvironment}>
+          <SelectTrigger className="w-[160px] font-mono text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="development" className="font-mono text-xs">Development</SelectItem>
+            <SelectItem value="staging" className="font-mono text-xs">Staging</SelectItem>
+            <SelectItem value="production" className="font-mono text-xs">Production</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
       <Card>
         <CardHeader>
@@ -82,11 +95,50 @@ export function ProjectDryRunPanel({ projectId }: ProjectDryRunPanelProps) {
           <DryRunChat
             projectId={projectId}
             environment={environment}
-            upstreamProvider={project?.upstreamProvider}
-            defaultModel={project?.defaultModel}
+            providerName={defaultProvider?.providerName}
+            providerType={defaultProvider?.providerType}
+            defaultModel={defaultProvider?.defaultModel}
           />
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function ProviderBadge({
+  providerName,
+  providerType,
+  defaultModel,
+  environment,
+}: {
+  providerName?: string;
+  providerType?: string;
+  defaultModel?: string | null;
+  environment: string;
+}) {
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground cursor-default">
+            <Cpu className="h-3 w-3" />
+            {providerType ? (
+              <span>
+                <span className="font-medium text-foreground">{providerName || providerType}</span>
+                {defaultModel && <span> / {defaultModel}</span>}
+              </span>
+            ) : (
+              <span>No provider</span>
+            )}
+            <Info className="h-3 w-3 opacity-50" />
+          </div>
+        </TooltipTrigger>
+        <TooltipContent className="font-mono text-xs max-w-[250px]">
+          {providerType
+            ? `Using ${providerName || providerType} for the ${environment} environment. Change provider in project settings.`
+            : `No provider set for the ${environment} environment. Set one in project settings.`}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }

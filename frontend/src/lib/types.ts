@@ -14,10 +14,30 @@ export interface Project {
   policySetsCount: number;
   updatedAt?: string | null;
   key: string;
-  upstreamBaseUrl?: string | null;
-  upstreamProvider?: string | null;
+  active: boolean;
+}
+
+export interface Provider {
+  id: string;
+  name: string;
+  providerType: string;
+  baseUrl?: string | null;
   defaultModel?: string | null;
   active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectProvider {
+  id: string;
+  providerId: string;
+  providerName: string;
+  providerType: string;
+  isDefault: boolean;
+  environment: string;
+  defaultModel?: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface User {

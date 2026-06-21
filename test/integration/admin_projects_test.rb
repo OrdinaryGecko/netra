@@ -57,10 +57,16 @@ class AdminProjectsTest < ActionDispatch::IntegrationTest
       @policy_version = @policy_set.policy_versions.create!(version: "1", status: "draft")
       @policy_version.rules.create!(name: "max-input", kind: "max_message_chars", stage: "input", action: "block", priority: 10, config: { "max" => 50 })
       @policy_version.publish!
+
+      stub_provider = Provider.find_or_create_by!(provider_type: "stub") do |p|
+        p.name = "Stub (testing)"
+        p.active = true
+      end
+      @project.link_stub_providers!
     end
 
     post "/v1/admin/projects/#{@project.id}/dry_run",
-      params: { messages: [{ role: "user", content: "Hello" }], provider: "stub", model: "stub-v1" },
+      params: { messages: [{ role: "user", content: "Hello" }] },
       as: :json, headers: @headers
 
     assert_response :success

@@ -1,6 +1,6 @@
 module Guardrails
   class RequestValidator
-    REQUIRED_FIELDS = %i[environment provider model messages].freeze
+    REQUIRED_FIELDS = %i[environment messages].freeze
 
     def self.call!(payload)
       errors = []

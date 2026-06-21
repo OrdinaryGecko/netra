@@ -11,6 +11,7 @@ import Policies from "./pages/Policies";
 import Projects from "./pages/Projects";
 import Members from "./pages/Members";
 import Profile from "./pages/Profile";
+import Settings from "./pages/Settings";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import ConfirmEmail from "./pages/ConfirmEmail";
@@ -34,6 +35,7 @@ const App = () => (
               <Route path="/confirm-email" element={<ConfirmEmail />} />
               <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
               <Route path="/members" element={<ProtectedRoute><Members /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/projects/:projectId/policies" element={<ProtectedRoute><Policies /></ProtectedRoute>} />
               <Route path="/projects/:projectId/policy/:versionId" element={<ProtectedRoute><Index /></ProtectedRoute>} />

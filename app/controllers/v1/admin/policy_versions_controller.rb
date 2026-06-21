@@ -86,10 +86,7 @@ module V1
 
       def test_params
         params.permit(
-          :provider,
-          :model,
-          :execute_provider,
-          options: {},
+          :environment,
           messages: %i[role content]
         ).tap do |payload|
           payload[:environment] ||= policy_version_environment

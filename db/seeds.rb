@@ -22,11 +22,19 @@ Apartment::Tenant.switch(organization.slug) do
   user.confirm unless user.confirmed?
   puts "Seeded user: admin@netra.local / password"
 
+  # Create stub provider
+  stub_provider = Provider.find_or_create_by!(provider_type: "stub") do |p|
+    p.name = "Stub (testing)"
+    p.active = true
+  end
+
   # Create project
   project = Project.find_or_create_by!(key: "demo-app") do |p|
     p.name = "Demo Project"
-    p.upstream_provider = "stub"
   end
+
+  # Link project to stub provider as default for development and staging
+  project.link_stub_providers!
 
   # Create client application
   client_application = ClientApplication.find_or_create_by!(key: "demo-app") do |app|
@@ -53,15 +61,21 @@ Apartment::Tenant.switch(organization.slug) do
     ps.project = project
   end
 
-  policy_version = policy_set.policy_versions.find_or_create_by!(version: "1") do |pv|
-    pv.status = "draft"
-    pv.definition = { description: "Default guardrails policy" }
+  policy_version = policy_set.policy_versions.find_by(version: "1")
+  unless policy_version
+    policy_version = policy_set.policy_versions.create!(
+      version: "1",
+      status: "draft",
+      definition: { description: "Default guardrails policy" }
+    )
   end
+  # Reset to draft if not draft (for re-seeding)
+  policy_version.update_column(:status, "draft") unless policy_version.status == "draft"
 
   rules = [
     { name: "input size limit", kind: "max_message_chars", stage: "input", action: "block", priority: 10, config: { max: 4_000 } },
     { name: "prompt injection keywords", kind: "keyword_detector", stage: "input", action: "block", priority: 20, config: { keywords: ["ignore previous instructions", "reveal system prompt"] } },
-    { name: "output pii mask", kind: "pii_detector", stage: "output", action: "mask", priority: 30, config: {} },
+    { name: "output pii detector", kind: "pii_detector", stage: "output", action: "log_only", priority: 30, config: {} },
     { name: "json output enforcer", kind: "json_format", stage: "output", action: "block", priority: 40, config: {} }
   ]
 

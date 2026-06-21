@@ -1,14 +1,45 @@
-import { ApiErrorPayload, DryRunResult, PolicySetSummary, PolicyVersion, Project, Rule } from "./types";
+import { ApiErrorPayload, DryRunResult, PolicySetSummary, PolicyVersion, Project, Provider, ProjectProvider, Rule } from "./types";
 
 type BackendProject = {
   id: number;
   name: string;
   key: string;
-  upstream_base_url?: string | null;
-  upstream_provider?: string | null;
-  default_model?: string | null;
   active: boolean;
   policy_sets_count: number;
+};
+
+type BackendProvider = {
+  id: number;
+  name: string;
+  provider_type: string;
+  base_url?: string | null;
+  default_model?: string | null;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+const PROVIDER_DEFAULTS: Record<string, { baseUrl: string; defaultModel: string }> = {
+  openai: { baseUrl: 'https://api.openai.com/v1', defaultModel: 'gpt-4o' },
+  anthropic: { baseUrl: 'https://api.anthropic.com/v1', defaultModel: 'claude-sonnet-4-20250514' },
+  openrouter: { baseUrl: 'https://openrouter.ai/api/v1', defaultModel: 'openai/gpt-4o' },
+  groq: { baseUrl: 'https://api.groq.com/openai/v1', defaultModel: 'llama-3.3-70b-versatile' },
+};
+
+export function getProviderDefaults(providerType: string) {
+  return PROVIDER_DEFAULTS[providerType] || { baseUrl: '', defaultModel: '' };
+}
+
+type BackendProjectProvider = {
+  id: number;
+  provider_id: number;
+  provider_name: string;
+  provider_type: string;
+  is_default: boolean;
+  environment: string;
+  default_model?: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 type BackendPolicySet = {
@@ -164,15 +195,37 @@ function mapProject(project: BackendProject): Project {
     id: String(project.id),
     name: project.name,
     slug: project.key,
-    description: project.upstream_provider
-      ? `${project.upstream_provider} runtime project`
-      : "AI workload protected by Netra guardrails",
+    description: "AI workload protected by Netra guardrails",
     key: project.key,
-    upstreamBaseUrl: project.upstream_base_url,
-    upstreamProvider: project.upstream_provider,
-    defaultModel: project.default_model,
     active: project.active,
     policySetsCount: project.policy_sets_count,
+  };
+}
+
+function mapProvider(provider: BackendProvider): Provider {
+  return {
+    id: String(provider.id),
+    name: provider.name,
+    providerType: provider.provider_type,
+    baseUrl: provider.base_url,
+    defaultModel: provider.default_model,
+    active: provider.active,
+    createdAt: provider.created_at,
+    updatedAt: provider.updated_at,
+  };
+}
+
+function mapProjectProvider(pp: BackendProjectProvider): ProjectProvider {
+  return {
+    id: String(pp.id),
+    providerId: String(pp.provider_id),
+    providerName: pp.provider_name,
+    providerType: pp.provider_type,
+    isDefault: pp.is_default,
+    environment: pp.environment,
+    defaultModel: pp.default_model,
+    createdAt: pp.created_at,
+    updatedAt: pp.updated_at,
   };
 }
 
@@ -241,6 +294,79 @@ export async function fetchPolicySets(): Promise<PolicySetSummary[]> {
   }));
 }
 
+export async function fetchProviders(): Promise<Provider[]> {
+  const payload = await request<BackendProvider[]>("/v1/admin/providers");
+  return payload.map(mapProvider);
+}
+
+export async function createProvider(params: {
+  name: string;
+  provider_type: string;
+  base_url?: string;
+  api_key?: string;
+  default_model?: string;
+}): Promise<Provider> {
+  const payload = await request<BackendProvider>("/v1/admin/providers", {
+    method: "POST",
+    body: { provider: params },
+  });
+  return mapProvider(payload);
+}
+
+export async function updateProvider(id: string, params: {
+  name?: string;
+  base_url?: string;
+  api_key?: string;
+  default_model?: string;
+  active?: boolean;
+}): Promise<Provider> {
+  const payload = await request<BackendProvider>(`/v1/admin/providers/${id}`, {
+    method: "PATCH",
+    body: { provider: params },
+  });
+  return mapProvider(payload);
+}
+
+export async function deleteProvider(id: string): Promise<void> {
+  await request<void>(`/v1/admin/providers/${id}`, { method: "DELETE" });
+}
+
+export async function fetchProjectProviders(projectId: string): Promise<ProjectProvider[]> {
+  const payload = await request<BackendProjectProvider[]>(`/v1/admin/projects/${projectId}/project_providers`);
+  return payload.map(mapProjectProvider);
+}
+
+export async function addProjectProvider(projectId: string, params: {
+  provider_id: string;
+  is_default?: boolean;
+  environment: string;
+  default_model?: string;
+}): Promise<ProjectProvider> {
+  const payload = await request<BackendProjectProvider>(`/v1/admin/projects/${projectId}/project_providers`, {
+    method: "POST",
+    body: { project_provider: { ...params, provider_id: Number(params.provider_id) } },
+  });
+  return mapProjectProvider(payload);
+}
+
+export async function updateProjectProvider(projectId: string, id: string, params: {
+  provider_id?: string;
+  is_default?: boolean;
+  default_model?: string;
+}): Promise<ProjectProvider> {
+  const body: Record<string, unknown> = { ...params };
+  if (body.provider_id) body.provider_id = Number(body.provider_id);
+  const payload = await request<BackendProjectProvider>(`/v1/admin/projects/${projectId}/project_providers/${id}`, {
+    method: "PATCH",
+    body: { project_provider: body },
+  });
+  return mapProjectProvider(payload);
+}
+
+export async function removeProjectProvider(projectId: string, id: string): Promise<void> {
+  await request<void>(`/v1/admin/projects/${projectId}/project_providers/${id}`, { method: "DELETE" });
+}
+
 export async function fetchPolicySetsForProject(projectId: string, environment?: string): Promise<PolicySetSummary[]> {
   const path = environment ? `/v1/admin/policy_sets?environment=${encodeURIComponent(environment)}` : "/v1/admin/policy_sets";
   const payload = await request<BackendPolicySet[]>(path, { projectId });
@@ -295,9 +421,6 @@ export async function createProject(params: {
         name: params.name,
         key: baseKey,
         active: true,
-        upstream_provider: "stub",
-        upstream_base_url: null,
-        upstream_key: null,
       },
     },
   });
@@ -430,8 +553,6 @@ export async function dryRunPolicyVersion(policyVersionId: string, content: stri
     method: "POST",
     projectId,
     body: {
-      provider: "stub",
-      model: "stub-v1",
       messages: [
         {
           role: "user",
@@ -455,7 +576,6 @@ export async function dryRunProject(
   projectId: string,
   content: string,
   environment?: string,
-  options?: { executeProvider?: boolean; provider?: string; model?: string }
 ): Promise<DryRunResult> {
   const payload = await request<{
     status: "allowed" | "blocked";
@@ -469,9 +589,6 @@ export async function dryRunProject(
     projectId,
     body: {
       environment,
-      provider: options?.provider || "stub",
-      model: options?.model || "stub-v1",
-      execute_provider: options?.executeProvider || false,
       messages: [
         {
           role: "user",

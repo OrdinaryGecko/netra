@@ -1,16 +1,18 @@
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import { updateProject } from '@/lib/api';
-import { Project } from '@/lib/types';
+import { updateProject, fetchProviders, fetchProjectProviders, updateProjectProvider, addProjectProvider } from '@/lib/api';
+import { Project, Provider } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
 import { toast } from 'sonner';
-import { Settings } from 'lucide-react';
+import { Settings, Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ProjectSettingsPanelProps {
   project: Project;
@@ -18,90 +20,189 @@ interface ProjectSettingsPanelProps {
 
 export function ProjectSettingsPanel({ project }: ProjectSettingsPanelProps) {
   const { refreshProjects } = useAuth();
+  const queryClient = useQueryClient();
   const [name, setName] = useState(project.name);
-  const [upstreamProvider, setUpstreamProvider] = useState(project.upstreamProvider || 'stub');
-  const [upstreamBaseUrl, setUpstreamBaseUrl] = useState(project.upstreamBaseUrl || '');
-  const [upstreamKey, setUpstreamKey] = useState('');
-  const [defaultModel, setDefaultModel] = useState(project.defaultModel || '');
   const [active, setActive] = useState(project.active);
 
-  const mutation = useMutation({
+  const providersQuery = useQuery({
+    queryKey: ['providers'],
+    queryFn: fetchProviders,
+  });
+
+  const projectProvidersQuery = useQuery({
+    queryKey: ['project-providers', project.id],
+    queryFn: () => fetchProjectProviders(project.id),
+  });
+
+  const projectMutation = useMutation({
     mutationFn: () => updateProject(project.id, {
       name: name.trim(),
-      upstream_provider: upstreamProvider,
-      upstream_base_url: upstreamBaseUrl || null,
-      upstream_key: upstreamKey || undefined,
-      default_model: defaultModel || null,
       active,
     }),
     onSuccess: async () => {
       await refreshProjects();
-      setUpstreamKey('');
       toast.success('Project settings saved');
     },
     onError: (error: Error) => toast.error(error.message),
   });
 
-  const dirty = name !== project.name
-    || upstreamProvider !== (project.upstreamProvider || 'stub')
-    || upstreamBaseUrl !== (project.upstreamBaseUrl || '')
-    || upstreamKey !== ''
-    || defaultModel !== (project.defaultModel || '')
-    || active !== project.active;
+  const [updatingEnv, setUpdatingEnv] = useState<string | null>(null);
+
+  const changeProviderMutation = useMutation({
+    mutationFn: ({ projectProviderId, providerId, env }: { projectProviderId?: string; providerId: string; env: string }) => {
+      setUpdatingEnv(env);
+      if (projectProviderId) {
+        return updateProjectProvider(project.id, projectProviderId, { provider_id: providerId });
+      }
+      return addProjectProvider(project.id, { provider_id: providerId, is_default: true, environment: env });
+    },
+    onSuccess: async () => {
+      await projectProvidersQuery.refetch();
+      setUpdatingEnv(null);
+      toast.success('Provider updated');
+    },
+    onError: (error: Error) => {
+      setUpdatingEnv(null);
+      toast.error(error.message);
+    },
+  });
+
+  const dirty = name !== project.name || active !== project.active;
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-            <Settings className="h-4 w-4 text-primary" />
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <Settings className="h-4 w-4 text-primary" />
+            </div>
+            <CardTitle className="text-base font-mono">Project settings</CardTitle>
           </div>
-          <CardTitle className="text-base font-mono">Project settings</CardTitle>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Name</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} className="font-mono text-xs" disabled={mutation.isPending} />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Name</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} className="font-mono text-xs" disabled={projectMutation.isPending} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Project key</Label>
+              <Input value={project.key} disabled className="font-mono text-xs opacity-60" />
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch checked={active} onCheckedChange={setActive} disabled={projectMutation.isPending} />
+              <Label className="font-mono text-xs">Project active</Label>
+            </div>
           </div>
-          <div className="space-y-1.5">
-            <Label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Project key</Label>
-            <Input value={project.key} disabled className="font-mono text-xs opacity-60" />
+          <div className="pt-2">
+            <Button onClick={() => projectMutation.mutate()} disabled={!dirty || !name.trim() || projectMutation.isPending} className="font-mono text-xs">
+              {projectMutation.isPending ? 'Saving...' : 'Save changes'}
+            </Button>
           </div>
-          <div className="space-y-1.5">
-            <Label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Upstream provider</Label>
-            <Select value={upstreamProvider} onValueChange={setUpstreamProvider} disabled={mutation.isPending}>
-              <SelectTrigger className="font-mono text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="stub" className="font-mono text-xs">Stub (testing)</SelectItem>
-                <SelectItem value="openai" className="font-mono text-xs">OpenAI</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Upstream base URL</Label>
-            <Input value={upstreamBaseUrl} onChange={(e) => setUpstreamBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1" className="font-mono text-xs" disabled={mutation.isPending} />
-          </div>
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Provider API key</Label>
-            <Input type="password" value={upstreamKey} onChange={(e) => setUpstreamKey(e.target.value)} placeholder="sk-... (leave empty to keep current)" className="font-mono text-xs" disabled={mutation.isPending} />
-          </div>
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Default model</Label>
-            <Input value={defaultModel} onChange={(e) => setDefaultModel(e.target.value)} placeholder="gpt-4o" className="font-mono text-xs" disabled={mutation.isPending} />
-          </div>
-          <div className="flex items-center gap-3">
-            <Switch checked={active} onCheckedChange={setActive} disabled={mutation.isPending} />
-            <Label className="font-mono text-xs">Project active</Label>
-          </div>
-        </div>
-        <div className="pt-2">
-          <Button onClick={() => mutation.mutate()} disabled={!dirty || !name.trim() || mutation.isPending} className="font-mono text-xs">
-            {mutation.isPending ? 'Saving...' : 'Save changes'}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-mono">Providers</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {['development', 'staging', 'production'].map((env) => {
+            const currentPp = projectProvidersQuery.data?.find((pp) => pp.environment === env);
+            return (
+              <div key={env} className="flex items-center gap-3 rounded-md border px-4 py-2.5">
+                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground w-24 shrink-0">{env}</span>
+                <ProviderPicker
+                  providers={providersQuery.data || []}
+                  value={currentPp?.providerId}
+                  disabled={updatingEnv === env}
+                  onChange={(providerId) => {
+                    if (!currentPp || providerId !== currentPp.providerId) {
+                      changeProviderMutation.mutate({ projectProviderId: currentPp?.id, providerId, env });
+                    }
+                  }}
+                />
+                {!currentPp && (
+                  <span className="font-mono text-[10px] text-muted-foreground italic">Not configured</span>
+                )}
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function ProviderPicker({
+  providers,
+  value,
+  disabled,
+  onChange,
+}: {
+  providers: Provider[];
+  value?: string;
+  disabled?: boolean;
+  onChange: (providerId: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = providers.find((p) => p.id === value);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          disabled={disabled}
+          className={cn(
+            "flex h-8 w-[280px] items-center justify-between rounded-md border border-input bg-background px-3 py-1 text-xs ring-offset-background",
+            "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+            "disabled:cursor-not-allowed disabled:opacity-50",
+            "font-mono"
+          )}
+        >
+          {selected ? (
+            <span className="truncate">{selected.name} — {selected.providerType}</span>
+          ) : (
+            <span className="text-muted-foreground">Select provider...</span>
+          )}
+          <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[320px] p-0" align="start">
+        < Command>
+          <CommandInput placeholder="Search providers..." className="h-8 font-mono text-xs" />
+          <CommandEmpty className="font-mono text-xs py-2">No providers found.</CommandEmpty>
+          <CommandGroup>
+            {providers.map((p) => (
+              <CommandItem
+                key={p.id}
+                value={`${p.name} ${p.providerType} ${p.defaultModel || ''}`}
+                onSelect={() => {
+                  onChange(p.id);
+                  setOpen(false);
+                }}
+                className="flex items-start gap-3 py-2.5 cursor-pointer"
+              >
+                <Check className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", value === p.id ? "opacity-100" : "opacity-0")} />
+                <div className="flex-1 min-w-0 space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-medium">{p.name}</span>
+                    <span className="font-mono text-[9px] px-1 py-0.5 rounded bg-muted text-muted-foreground uppercase">{p.providerType}</span>
+                  </div>
+                  {p.baseUrl && (
+                    <p className="font-mono text-[10px] text-muted-foreground truncate">{p.baseUrl}</p>
+                  )}
+                  {p.defaultModel && (
+                    <p className="font-mono text-[10px] text-muted-foreground">Model: {p.defaultModel}</p>
+                  )}
+                </div>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }

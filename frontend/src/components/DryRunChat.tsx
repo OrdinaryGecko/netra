@@ -3,7 +3,8 @@ import { useMutation } from '@tanstack/react-query';
 import { dryRunPolicyVersion, dryRunProject } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Loader2 } from 'lucide-react';
+import { Send, Loader2, Cpu, Info } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 
 interface ChatMessage {
@@ -16,11 +17,12 @@ interface DryRunChatProps {
   policyVersionId?: string;
   projectId?: string;
   environment?: string;
-  upstreamProvider?: string | null;
+  providerName?: string | null;
+  providerType?: string | null;
   defaultModel?: string | null;
 }
 
-export function DryRunChat({ policyVersionId, projectId, environment, upstreamProvider, defaultModel }: DryRunChatProps) {
+export function DryRunChat({ policyVersionId, projectId, environment, providerName, providerType, defaultModel }: DryRunChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -33,16 +35,10 @@ export function DryRunChat({ policyVersionId, projectId, environment, upstreamPr
     scrollToBottom();
   }, [messages]);
 
-  const useRealProvider = upstreamProvider && upstreamProvider !== 'stub';
-
   const mutation = useMutation({
     mutationFn: (content: string) => {
       if (projectId) {
-        return dryRunProject(projectId, content, environment, {
-          executeProvider: useRealProvider,
-          provider: useRealProvider ? upstreamProvider : undefined,
-          model: useRealProvider ? (defaultModel || 'gpt-4o') : undefined,
-        });
+        return dryRunProject(projectId, content, environment);
       }
       return dryRunPolicyVersion(policyVersionId!, content, projectId);
     },
@@ -98,7 +94,30 @@ export function DryRunChat({ policyVersionId, projectId, environment, upstreamPr
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="border-t p-3">
+      <div className="border-t p-3 space-y-2">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground cursor-default">
+                <Cpu className="h-3 w-3" />
+                {providerType ? (
+                  <span>
+                    <span className="font-medium text-foreground">{providerName || providerType}</span>
+                    {defaultModel && <span> / {defaultModel}</span>}
+                  </span>
+                ) : (
+                  <span>No provider</span>
+                )}
+                <Info className="h-3 w-3 opacity-50" />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent className="font-mono text-xs max-w-[250px]">
+              {providerType
+                ? `Using ${providerName || providerType} for the ${environment} environment. Change provider in project settings.`
+                : `No provider set for the ${environment} environment. Set one in project settings.`}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
         <div className="flex gap-2">
           <Input
             value={input}

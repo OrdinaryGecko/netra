@@ -25,6 +25,9 @@ module V1
             key: project.key,
             active: project.active
           )
+
+          project.link_stub_providers!
+
           render json: serialize_project(project), status: :created
         else
           render_error("invalid_project", status: :unprocessable_entity, details: project.errors.full_messages)
@@ -57,6 +60,8 @@ module V1
         render json: result.as_json, status: :ok
       rescue Guardrails::ValidationError => e
         render_error("invalid_request", status: :unprocessable_entity, details: e.errors)
+      rescue Guardrails::ProviderError => e
+        render_error("provider_error", status: :unprocessable_entity, details: [e.message])
       rescue ActiveRecord::RecordInvalid => e
         render_error("invalid_project", status: :unprocessable_entity, details: e.record.errors.full_messages)
       end
@@ -68,9 +73,6 @@ module V1
           id: project.id,
           name: project.name,
           key: project.key,
-          upstream_base_url: project.upstream_base_url,
-          upstream_provider: project.upstream_provider,
-          default_model: project.default_model,
           active: project.active,
           policy_sets_count: project.policy_sets.size
         }
@@ -80,10 +82,6 @@ module V1
         params.require(:project).permit(
           :name,
           :key,
-          :upstream_base_url,
-          :upstream_provider,
-          :upstream_key,
-          :default_model,
           :active
         )
       end
@@ -100,10 +98,6 @@ module V1
       def test_params
         params.permit(
           :environment,
-          :provider,
-          :model,
-          :execute_provider,
-          options: {},
           messages: %i[role content]
         )
       end

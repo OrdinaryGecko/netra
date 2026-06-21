@@ -45,7 +45,7 @@ module Guardrails
         messages
       end
 
-      provider_response = execute_provider? ? provider.complete(messages: forwarded_messages) : simulated_provider_response(forwarded_messages)
+      provider_response = provider.complete(messages: forwarded_messages)
 
       output_decision = Evaluator.call(
         rules: @policy_version.rules.enabled.where(stage: "output"),
@@ -116,7 +116,7 @@ module Guardrails
         messages
       end
 
-      provider_response = execute_provider? ? provider.complete(messages: forwarded_messages) : simulated_provider_response(forwarded_messages)
+      provider_response = provider.complete(messages: forwarded_messages)
 
       output_decision = Evaluator.call(
         rules: output_rules,
@@ -236,19 +236,28 @@ module Guardrails
     end
 
     def provider
+      resolved_provider = resolve_provider
       Providers::Factory.build(
-        provider: provider_name, model: model_name, options:,
-        base_url: @project&.upstream_base_url,
-        api_key: @project&.upstream_key
+        provider: resolved_provider.provider_type,
+        model: resolved_provider.default_model,
+        options:,
+        base_url: resolved_provider.base_url,
+        api_key: resolved_provider.api_key
       )
     end
 
-    def provider_name
-      normalized_payload[:provider]
-    end
+    def resolve_provider
+      project = @project || @policy_version&.policy_set&.client_application&.project
+      return nil unless project
 
-    def model_name
-      normalized_payload[:model]
+      environment = normalized_payload[:environment] || "development"
+      provider = project.default_provider_for(environment)
+
+      unless provider
+        raise Guardrails::ProviderError, "No provider configured for the #{environment} environment. Set one in project settings."
+      end
+
+      provider
     end
 
     def options
@@ -269,27 +278,11 @@ module Guardrails
       end
     end
 
-    def execute_provider?
-      ActiveModel::Type::Boolean.new.cast(normalized_payload[:execute_provider])
-    end
-
-    def simulated_provider_response(forwarded_messages = nil)
-      content = (forwarded_messages || messages).last[:content].to_s
-      {
-        provider: provider_name,
-        model: model_name,
-        content: content
-      }
-    end
-
     def normalized_payload
       @normalized_payload ||= {
         environment: @request_payload[:environment] || (@policy_version ? @policy_version.policy_set.environment : @environment),
-        provider: @request_payload[:provider].presence || DEFAULT_PROVIDER,
-        model: @request_payload[:model].presence || DEFAULT_MODEL,
         options: @request_payload[:options] || {},
-        messages: @request_payload[:messages] || [],
-        execute_provider: @request_payload[:execute_provider]
+        messages: @request_payload[:messages] || []
       }
     end
   end

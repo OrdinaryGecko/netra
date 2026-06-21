@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_20_141000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_21_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -136,16 +136,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_20_141000) do
     t.index ["policy_set_id"], name: "index_policy_versions_on_policy_set_id"
   end
 
+  create_table "project_providers", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "default_model"
+    t.string "environment", default: "development", null: false
+    t.boolean "is_default", default: false, null: false
+    t.bigint "project_id", null: false
+    t.bigint "provider_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["project_id", "environment", "is_default"], name: "idx_on_project_id_environment_is_default_d125471d21", unique: true, where: "(is_default = true)"
+    t.index ["project_id", "provider_id", "environment"], name: "idx_on_project_id_provider_id_environment_60225613fe", unique: true
+    t.index ["project_id"], name: "index_project_providers_on_project_id"
+    t.index ["provider_id"], name: "index_project_providers_on_provider_id"
+  end
+
   create_table "projects", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
-    t.string "default_model"
     t.string "key", null: false
     t.string "name", null: false
     t.datetime "updated_at", null: false
-    t.string "upstream_base_url"
-    t.string "upstream_key"
-    t.string "upstream_provider"
     t.index ["key"], name: "index_projects_on_key", unique: true
   end
 
@@ -160,6 +170,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_20_141000) do
     t.datetime "updated_at", null: false
     t.index ["client_application_id"], name: "index_provider_configs_on_client_application_id"
     t.index ["project_id"], name: "index_provider_configs_on_project_id"
+  end
+
+  create_table "providers", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.string "api_key"
+    t.string "base_url"
+    t.datetime "created_at", null: false
+    t.string "default_model"
+    t.string "name", null: false
+    t.string "provider_type", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active"], name: "index_providers_on_active"
+    t.index ["provider_type"], name: "index_providers_on_provider_type"
   end
 
   create_table "rules", force: :cascade do |t|
@@ -212,6 +235,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_20_141000) do
   add_foreign_key "policy_sets", "client_applications"
   add_foreign_key "policy_sets", "projects"
   add_foreign_key "policy_versions", "policy_sets"
+  add_foreign_key "project_providers", "projects"
   add_foreign_key "provider_configs", "client_applications"
   add_foreign_key "provider_configs", "projects"
   add_foreign_key "rules", "policy_versions"
