@@ -331,6 +331,22 @@ export async function deleteProvider(id: string): Promise<void> {
   await request<void>(`/v1/admin/providers/${id}`, { method: "DELETE" });
 }
 
+export async function fetchProviderModels(providerId: string): Promise<{ id: string; name: string }[]> {
+  return request<{ id: string; name: string }[]>(`/v1/admin/providers/${providerId}/models`);
+}
+
+export async function validateProvider(params: {
+  provider_type: string;
+  base_url: string;
+  api_key?: string;
+  provider_id?: string;
+}): Promise<{ valid: boolean; models?: { id: string; name: string }[]; error?: string }> {
+  return request(`/v1/admin/providers/validate`, {
+    method: "POST",
+    body: params,
+  });
+}
+
 export async function fetchProjectProviders(projectId: string): Promise<ProjectProvider[]> {
   const payload = await request<BackendProjectProvider[]>(`/v1/admin/projects/${projectId}/project_providers`);
   return payload.map(mapProjectProvider);

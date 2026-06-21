@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchProviders, createProvider, updateProvider, deleteProvider, getProviderDefaults } from '@/lib/api';
+import { fetchProviders, createProvider, updateProvider, deleteProvider, getProviderDefaults, fetchProviderModels, validateProvider } from '@/lib/api';
 import { Provider } from '@/lib/types';
 import { AppHeader } from '@/components/AppHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,8 +10,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
-import { Settings, Plus, Trash2, Pencil, Globe, Key, Cpu, Lock } from 'lucide-react';
+import { Settings, Plus, Trash2, Pencil, Globe, Key, Cpu, Lock, Check, ChevronsUpDown, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function SettingsPage() {
   const queryClient = useQueryClient();
@@ -222,16 +226,97 @@ function ProviderDialog({
   const [apiKey, setApiKey] = useState('');
   const [defaultModel, setDefaultModel] = useState(provider?.defaultModel || '');
   const [active, setActive] = useState(provider?.active ?? true);
+  const [validated, setValidated] = useState(isEditing);
+  const [models, setModels] = useState<{ id: string; name: string }[]>([]);
+  const [validating, setValidating] = useState(false);
+
+  // Original values for comparison (editing only)
+  const originalBaseUrl = provider?.baseUrl || '';
+  const originalProviderType = provider?.providerType || '';
+
+  // Compute if credential fields changed from originals
+  const hasChanges = isEditing && (
+    providerType !== originalProviderType ||
+    baseUrl !== originalBaseUrl ||
+    apiKey.trim() !== ''
+  );
+
+  // Fetch models when editing (creds already saved)
+  const existingModelsQuery = useQuery({
+    queryKey: ['provider-models', provider?.id],
+    queryFn: () => fetchProviderModels(provider!.id),
+    enabled: isEditing && !isStub && open,
+  });
+
+  // Sync fetched models for editing (only when no changes and validated)
+  useEffect(() => {
+    if (isEditing && validated && existingModelsQuery.data && !hasChanges) {
+      setModels(existingModelsQuery.data);
+    }
+  }, [isEditing, validated, existingModelsQuery.data, hasChanges]);
 
   const handleProviderTypeChange = (type: string) => {
     setProviderType(type);
     if (type !== 'stub') {
       const defaults = getProviderDefaults(type);
       setBaseUrl(defaults.baseUrl);
-      setDefaultModel(defaults.defaultModel);
+      setDefaultModel('');
     } else {
       setBaseUrl('');
       setDefaultModel('');
+    }
+    setValidated(false);
+    setModels([]);
+  };
+
+  const handleBaseUrlChange = (value: string) => {
+    setBaseUrl(value);
+    // Check if reverted to original
+    if (isEditing && value === originalBaseUrl && apiKey.trim() === '' && providerType === originalProviderType) {
+      setValidated(true);
+      setModels(existingModelsQuery.data || []);
+    } else {
+      setValidated(false);
+      setModels([]);
+    }
+  };
+
+  const handleApiKeyChange = (value: string) => {
+    setApiKey(value);
+    // Check if reverted to original (empty = keep current)
+    if (isEditing && value.trim() === '' && baseUrl === originalBaseUrl && providerType === originalProviderType) {
+      setValidated(true);
+      setModels(existingModelsQuery.data || []);
+    } else if (value.trim() === '' && !isEditing) {
+      // New provider: empty api key can't be validated
+      setValidated(false);
+      setModels([]);
+    } else {
+      setValidated(false);
+      setModels([]);
+    }
+  };
+
+  const handleValidate = async () => {
+    setValidating(true);
+    try {
+      const result = await validateProvider({
+        provider_type: providerType,
+        base_url: baseUrl,
+        api_key: apiKey.trim() || undefined,
+        provider_id: isEditing ? provider?.id : undefined,
+      });
+      if (result.valid) {
+        setValidated(true);
+        setModels(result.models || []);
+        toast.success('Connection validated successfully');
+      } else {
+        toast.error(result.error || 'Validation failed');
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Validation failed');
+    } finally {
+      setValidating(false);
     }
   };
 
@@ -245,6 +330,9 @@ function ProviderDialog({
       active,
     });
   };
+
+  const canValidate = !isStub && name.trim() && baseUrl.trim() && (isEditing ? (apiKey.trim() !== '' || hasChanges) : apiKey.trim());
+  const canSave = !isStub && name.trim() && validated && (isEditing ? true : apiKey.trim() !== '');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -285,10 +373,9 @@ function ProviderDialog({
                 <Label className="font-mono text-xs uppercase tracking-wider">Base URL</Label>
                 <Input
                   value={baseUrl}
-                  onChange={(e) => setBaseUrl(e.target.value)}
+                  onChange={(e) => handleBaseUrlChange(e.target.value)}
                   placeholder="Auto-filled based on provider type"
                   className="font-mono text-xs"
-                  disabled={isEditing}
                 />
               </div>
               <div className="space-y-2">
@@ -296,19 +383,36 @@ function ProviderDialog({
                 <Input
                   type="password"
                   value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
+                  onChange={(e) => handleApiKeyChange(e.target.value)}
                   placeholder={isEditing ? "Leave empty to keep current" : "Enter API key"}
                   className="font-mono text-xs"
                 />
               </div>
               <div className="space-y-2">
                 <Label className="font-mono text-xs uppercase tracking-wider">Default model</Label>
-                <Input
-                  value={defaultModel}
-                  onChange={(e) => setDefaultModel(e.target.value)}
-                  placeholder="e.g. gpt-4o"
-                  className="font-mono text-xs"
-                />
+                {validated ? (
+                  <ModelPicker
+                    models={models}
+                    value={defaultModel}
+                    onChange={setDefaultModel}
+                  />
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="relative">
+                        <Input
+                          disabled
+                          placeholder="Validate connection first"
+                          className="font-mono text-xs pr-8"
+                        />
+                        <Lock className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent className="font-mono text-xs">
+                      Validate the connection to load available models
+                    </TooltipContent>
+                  </Tooltip>
+                )}
               </div>
             </>
           )}
@@ -334,15 +438,99 @@ function ProviderDialog({
           </Button>
           {!isStub && (
             <Button
-              onClick={handleSubmit}
-              disabled={!name.trim() || isPending}
+              variant="outline"
+              onClick={handleValidate}
+              disabled={!canValidate || validating}
               className="font-mono text-xs"
             >
-              {isPending ? 'Saving...' : isEditing ? 'Save changes' : 'Create provider'}
+              {validating ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  Validating...
+                </>
+              ) : validated && !hasChanges ? (
+                <>
+                  <Check className="h-3.5 w-3.5 mr-1.5" />
+                  Validated
+                </>
+              ) : (
+                'Validate'
+              )}
+            </Button>
+          )}
+          {!isStub && (
+            <Button
+              onClick={handleSubmit}
+              disabled={!canSave || isPending}
+              className="font-mono text-xs"
+            >
+              {isPending ? 'Saving...' : isEditing ? 'Save changes' : 'Add provider'}
             </Button>
           )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ModelPicker({
+  models,
+  value,
+  onChange,
+}: {
+  models: { id: string; name: string }[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = models.find((m) => m.id === value);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            "flex h-8 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-1 text-xs ring-offset-background",
+            "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+            "font-mono"
+          )}
+        >
+          {selected ? (
+            <span className="truncate">{selected.name} ({selected.id})</span>
+          ) : value ? (
+            <span className="truncate">{value}</span>
+          ) : (
+            <span className="text-muted-foreground">Select model...</span>
+          )}
+          <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[350px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Search models..." className="h-8 font-mono text-xs" />
+          <CommandEmpty className="font-mono text-xs py-2">No models found.</CommandEmpty>
+          <CommandGroup className="max-h-[300px] overflow-y-auto">
+            {models.map((m) => (
+              <CommandItem
+                key={m.id}
+                value={`${m.name} ${m.id}`}
+                onSelect={() => {
+                  onChange(m.id);
+                  setOpen(false);
+                }}
+                className="flex items-center gap-2 py-2 cursor-pointer"
+              >
+                <Check className={cn("h-3.5 w-3.5 shrink-0", value === m.id ? "opacity-100" : "opacity-0")} />
+                <div className="flex-1 min-w-0">
+                  <span className="font-mono text-xs font-medium">{m.name}</span>
+                  <span className="font-mono text-[10px] text-muted-foreground ml-2">{m.id}</span>
+                </div>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }

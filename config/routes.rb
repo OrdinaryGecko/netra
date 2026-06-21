@@ -19,7 +19,14 @@ Rails.application.routes.draw do
     post "chat/completions", to: "chat_completions#create"
 
     namespace :admin do
-      resources :providers, only: %i[index create show update destroy]
+      resources :providers, only: %i[index create show update destroy] do
+        collection do
+          post :validate
+        end
+        member do
+          get :models
+        end
+      end
       resources :projects, only: %i[index create show update] do
         post :dry_run, on: :member
         resources :api_keys, only: %i[index create destroy]

@@ -27,6 +27,7 @@ class Provider < ApplicationRecord
   validates :name, uniqueness: true
 
   before_validation :set_defaults_from_type, on: :create
+  after_update :invalidate_models_cache, if: :saved_change_to_api_key?
 
   scope :active, -> { where(active: true) }
 
@@ -41,5 +42,9 @@ class Provider < ApplicationRecord
 
     self.base_url ||= DEFAULT_BASE_URLS[provider_type]
     self.default_model ||= DEFAULT_MODELS[provider_type]
+  end
+
+  def invalidate_models_cache
+    Rails.cache.delete("provider_models:#{id}")
   end
 end
