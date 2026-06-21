@@ -222,7 +222,7 @@ function ProviderDialog({
 
   const [name, setName] = useState(provider?.name || '');
   const [providerType, setProviderType] = useState(provider?.providerType || 'openai');
-  const [baseUrl, setBaseUrl] = useState(provider?.baseUrl || '');
+  const [baseUrl, setBaseUrl] = useState(provider?.baseUrl || getProviderDefaults(provider?.providerType || 'openai').baseUrl);
   const [apiKey, setApiKey] = useState('');
   const [defaultModel, setDefaultModel] = useState(provider?.defaultModel || '');
   const [active, setActive] = useState(provider?.active ?? true);
@@ -342,21 +342,21 @@ function ProviderDialog({
             {isEditing ? (isStub ? 'View Provider' : 'Edit Provider') : 'Add Provider'}
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2 min-w-0">
           <div className="space-y-2">
             <Label className="font-mono text-xs uppercase tracking-wider">Name</Label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Production OpenAI"
-              className="font-mono text-xs"
+              className="font-mono text-xs min-w-0"
               disabled={isStub}
             />
           </div>
           <div className="space-y-2">
             <Label className="font-mono text-xs uppercase tracking-wider">Provider type</Label>
             <Select value={providerType} onValueChange={handleProviderTypeChange} disabled={isEditing}>
-              <SelectTrigger className="font-mono text-xs">
+              <SelectTrigger className="font-mono text-xs min-w-0">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -369,26 +369,26 @@ function ProviderDialog({
           </div>
           {!isStub && (
             <>
-              <div className="space-y-2">
+              <div className="space-y-2 min-w-0">
                 <Label className="font-mono text-xs uppercase tracking-wider">Base URL</Label>
                 <Input
                   value={baseUrl}
                   onChange={(e) => handleBaseUrlChange(e.target.value)}
                   placeholder="Auto-filled based on provider type"
-                  className="font-mono text-xs"
+                  className="font-mono text-xs min-w-0"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 min-w-0">
                 <Label className="font-mono text-xs uppercase tracking-wider">API Key</Label>
                 <Input
                   type="password"
                   value={apiKey}
                   onChange={(e) => handleApiKeyChange(e.target.value)}
                   placeholder={isEditing ? "Leave empty to keep current" : "Enter API key"}
-                  className="font-mono text-xs"
+                  className="font-mono text-xs min-w-0"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 min-w-0">
                 <Label className="font-mono text-xs uppercase tracking-wider">Default model</Label>
                 {validated ? (
                   <ModelPicker
@@ -491,7 +491,7 @@ function ModelPicker({
         <button
           type="button"
           className={cn(
-            "flex h-8 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-1 text-xs ring-offset-background",
+            "flex h-8 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-1 text-xs ring-offset-background overflow-hidden min-w-0",
             "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
             "font-mono"
           )}
