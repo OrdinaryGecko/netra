@@ -1,18 +1,18 @@
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { updateProject, fetchProviders, fetchProjectProviders, updateProjectProvider, addProjectProvider, fetchProviderModels } from '@/lib/api';
 import { Project, Provider } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Settings, Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronsUpDown, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ProjectSettingsPanelProps {
@@ -21,7 +21,6 @@ interface ProjectSettingsPanelProps {
 
 export function ProjectSettingsPanel({ project }: ProjectSettingsPanelProps) {
   const { refreshProjects } = useAuth();
-  const queryClient = useQueryClient();
   const [name, setName] = useState(project.name);
   const [active, setActive] = useState(project.active);
 
@@ -115,39 +114,98 @@ export function ProjectSettingsPanel({ project }: ProjectSettingsPanelProps) {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-mono">Providers</CardTitle>
+      <Card className="overflow-hidden">
+        <CardHeader className="border-b bg-muted/30">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1">
+              <CardTitle className="text-sm font-mono">Project providers</CardTitle>
+              <CardDescription className="text-xs">
+                Choose the provider and optional model override for each runtime environment.
+              </CardDescription>
+            </div>
+            <Badge variant="outline" className="w-fit rounded-md font-mono text-[10px] uppercase tracking-wider">
+              {projectProvidersQuery.data?.length || 0}/3 configured
+            </Badge>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {['development', 'staging', 'production'].map((env) => {
-            const currentPp = projectProvidersQuery.data?.find((pp) => pp.environment === env);
-            return (
-              <div key={env} className="flex items-center gap-3 rounded-md border px-4 py-2.5">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground w-24 shrink-0">{env}</span>
-                <ProviderPicker
-                  providers={providersQuery.data || []}
-                  value={currentPp?.providerId}
-                  disabled={updatingEnv === env}
-                  onChange={(providerId) => {
-                    if (!currentPp || providerId !== currentPp.providerId) {
-                      changeProviderMutation.mutate({ projectProviderId: currentPp?.id, providerId, env });
-                    }
-                  }}
-                />
-                {currentPp && currentPp.providerType !== 'stub' && (
-                  <ModelPicker
-                    providerId={currentPp.providerId}
-                    value={currentPp.defaultModel || ''}
-                    onChange={(model) => updateModelMutation.mutate({ projectProviderId: currentPp.id, model })}
-                  />
-                )}
-                {!currentPp && (
-                  <span className="font-mono text-[10px] text-muted-foreground italic">Not configured</span>
-                )}
-              </div>
-            );
-          })}
+        <CardContent className="p-4">
+          <div className="overflow-hidden rounded-lg border bg-background/60">
+            {['development', 'staging', 'production'].map((env) => {
+              const currentPp = projectProvidersQuery.data?.find((pp) => pp.environment === env);
+              const currentProvider = providersQuery.data?.find((provider) => provider.id === currentPp?.providerId);
+              const effectiveModel = currentPp?.defaultModel || currentProvider?.defaultModel || null;
+              const usesProviderDefault = Boolean(currentPp && !currentPp.defaultModel && currentProvider?.defaultModel);
+
+              return (
+                <div
+                  key={env}
+                  className={cn(
+                    "grid gap-3 border-b p-3 last:border-b-0 lg:grid-cols-[150px_minmax(220px,1fr)_minmax(220px,1fr)] lg:items-center",
+                    currentPp ? "bg-card" : "bg-muted/20"
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-3 lg:block lg:space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-foreground">
+                        {env}
+                      </span>
+                      {updatingEnv === env && (
+                        <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">Saving</span>
+                      )}
+                    </div>
+                    <Badge
+                      variant={currentPp ? 'secondary' : 'outline'}
+                      className="w-fit rounded-md font-mono text-[9px] uppercase tracking-wider"
+                    >
+                      {currentPp ? 'Configured' : 'Empty'}
+                    </Badge>
+                  </div>
+
+                  <div className="min-w-0 space-y-1.5">
+                    <Label className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground lg:hidden">Provider</Label>
+                    <ProviderPicker
+                      providers={providersQuery.data || []}
+                      value={currentPp?.providerId}
+                      disabled={updatingEnv === env || providersQuery.isLoading}
+                      onChange={(providerId) => {
+                        if (!currentPp || providerId !== currentPp.providerId) {
+                          changeProviderMutation.mutate({ projectProviderId: currentPp?.id, providerId, env });
+                        }
+                      }}
+                    />
+                    {currentPp && (
+                      <p className="truncate font-mono text-[10px] text-muted-foreground">
+                        {currentPp.providerType} / {currentPp.providerName}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="min-w-0 space-y-1.5">
+                    <Label className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground lg:hidden">Model</Label>
+                    {currentPp && currentPp.providerType !== 'stub' ? (
+                      <>
+                        <ModelPicker
+                          providerId={currentPp.providerId}
+                          value={currentPp.defaultModel || ''}
+                          disabled={updateModelMutation.isPending}
+                          onChange={(model) => updateModelMutation.mutate({ projectProviderId: currentPp.id, model })}
+                        />
+                        <p className="truncate font-mono text-[10px] text-muted-foreground">
+                          {effectiveModel
+                            ? `${usesProviderDefault ? 'Provider default' : 'Project override'}: ${effectiveModel}`
+                            : 'Provider default will be used.'}
+                        </p>
+                      </>
+                    ) : (
+                      <div className="flex h-9 items-center rounded-md border border-dashed bg-muted/30 px-3 font-mono text-[10px] text-muted-foreground">
+                        {currentPp ? 'No model required' : 'Select provider first'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -157,10 +215,12 @@ export function ProjectSettingsPanel({ project }: ProjectSettingsPanelProps) {
 function ModelPicker({
   providerId,
   value,
+  disabled,
   onChange,
 }: {
   providerId: string;
   value: string;
+  disabled?: boolean;
   onChange: (value: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -179,9 +239,11 @@ function ModelPicker({
       <PopoverTrigger asChild>
         <button
           type="button"
+          disabled={disabled}
           className={cn(
-            "flex h-8 w-[180px] items-center justify-between rounded-md border border-input bg-background px-3 py-1 text-xs ring-offset-background shrink-0",
+            "flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-1 text-xs ring-offset-background shrink-0",
             "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+            "disabled:cursor-not-allowed disabled:opacity-50",
             "font-mono"
           )}
         >
@@ -262,14 +324,14 @@ function ProviderPicker({
           type="button"
           disabled={disabled}
           className={cn(
-            "flex h-8 w-[280px] items-center justify-between rounded-md border border-input bg-background px-3 py-1 text-xs ring-offset-background",
+            "flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-1 text-xs ring-offset-background",
             "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
             "disabled:cursor-not-allowed disabled:opacity-50",
             "font-mono"
           )}
         >
           {selected ? (
-            <span className="truncate">{selected.name} — {selected.providerType}</span>
+            <span className="truncate">{selected.name} / {selected.providerType}</span>
           ) : (
             <span className="text-muted-foreground">Select provider...</span>
           )}
@@ -277,7 +339,7 @@ function ProviderPicker({
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-[320px] p-0" align="start">
-        < Command>
+        <Command>
           <CommandInput placeholder="Search providers..." className="h-8 font-mono text-xs" />
           <CommandEmpty className="font-mono text-xs py-2">No providers found.</CommandEmpty>
           <CommandGroup>
