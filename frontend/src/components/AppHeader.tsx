@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ThemeToggle } from './ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Shield, LogOut, ChevronRight, FolderKanban, Users, Settings } from 'lucide-react';
+import { Shield, LogOut, ChevronRight, FolderKanban, Settings } from 'lucide-react';
 import { useAuth, usePermissions } from '@/contexts/AuthContext';
 import {
   DropdownMenu,
@@ -89,16 +89,10 @@ export function AppHeader({ currentProject, trailing }: AppHeaderProps) {
             </Badge>
           )}
           {canManage && (
-            <>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/settings')} className="font-mono text-xs gap-1.5">
-                <Settings className="h-3.5 w-3.5" />
-                Settings
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/members')} className="font-mono text-xs gap-1.5">
-                <Users className="h-3.5 w-3.5" />
-                Members
-              </Button>
-            </>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/settings')} className="font-mono text-xs gap-1.5">
+              <Settings className="h-3.5 w-3.5" />
+              Settings
+            </Button>
           )}
           <ThemeToggle />
           <Button variant="ghost" size="sm" onClick={handleSignOut} className="font-mono text-xs gap-1.5">

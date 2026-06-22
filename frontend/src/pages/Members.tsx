@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 
 const ROLES = ['owner', 'admin', 'editor', 'viewer', 'auditor'] as const;
 
-export default function Members() {
+export function MembersPanel({ showHeader = true }: { showHeader?: boolean }) {
   const { user } = useAuth();
   const { canManage } = usePermissions();
   const queryClient = useQueryClient();
@@ -66,9 +66,9 @@ export default function Members() {
   const members = membersQuery.data || [];
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader />
-      <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
+    <>
+      <div className="space-y-6">
+        {showHeader && (
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -86,10 +86,26 @@ export default function Members() {
             </Button>
           )}
         </div>
+        )}
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-mono">Organization members</CardTitle>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <CardTitle className="text-sm font-mono">Organization members</CardTitle>
+                {!showHeader && (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {members.length} member{members.length !== 1 ? 's' : ''} in this organization
+                  </p>
+                )}
+              </div>
+              {!showHeader && canManage && (
+                <Button onClick={() => setInviteOpen(true)} size="sm" className="font-mono text-xs gap-1.5">
+                  <Plus className="h-3.5 w-3.5" />
+                  Invite Member
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="border rounded-md divide-y">
@@ -181,6 +197,17 @@ export default function Members() {
         confirmLabel="Remove"
         destructive
       />
+    </>
+  );
+}
+
+export default function Members() {
+  return (
+    <div className="min-h-screen bg-background">
+      <AppHeader />
+      <div className="max-w-4xl mx-auto px-6 py-8">
+        <MembersPanel />
+      </div>
     </div>
   );
 }

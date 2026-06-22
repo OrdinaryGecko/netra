@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { fetchProviders, createProvider, updateProvider, deleteProvider, getProviderDefaults, fetchProviderModels, validateProvider } from '@/lib/api';
 import { Provider } from '@/lib/types';
 import { AppHeader } from '@/components/AppHeader';
+import { MembersPanel } from '@/pages/Members';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,13 +16,35 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
-import { Settings, Plus, Trash2, Pencil, Globe, Key, Cpu, Lock, Check, ChevronsUpDown, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Pencil, Globe, Cpu, Lock, Check, ChevronsUpDown, Loader2, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+type SettingsSection = 'providers' | 'members';
+
+const SETTINGS_SECTIONS: Array<{
+  id: SettingsSection;
+  label: string;
+  icon: typeof Cpu;
+}> = [
+  {
+    id: 'providers',
+    label: 'Providers',
+    icon: Cpu,
+  },
+  {
+    id: 'members',
+    label: 'Members',
+    icon: Users,
+  },
+];
 
 export default function SettingsPage() {
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [createOpen, setCreateOpen] = useState(false);
   const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
+  const requestedSection = searchParams.get('section');
+  const activeSection: SettingsSection = requestedSection === 'members' ? 'members' : 'providers';
 
   const providersQuery = useQuery({
     queryKey: ['providers'],
@@ -64,54 +88,87 @@ export default function SettingsPage() {
         <div className="space-y-6">
           <div>
             <h1 className="text-2xl font-mono font-bold">Settings</h1>
-            <p className="text-sm text-muted-foreground mt-1">Manage organization settings and integrations</p>
           </div>
 
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                    <Cpu className="h-4 w-4 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base font-mono">Providers</CardTitle>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Configure AI providers for your projects
-                    </p>
-                  </div>
-                </div>
-                <Button size="sm" onClick={() => setCreateOpen(true)} className="font-mono text-xs">
-                  <Plus className="h-3.5 w-3.5 mr-1.5" />
-                  Add Provider
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {providersQuery.data && providersQuery.data.length > 0 ? (
-                <div className="space-y-2">
-                  {providersQuery.data.map((provider) => (
-                    <ProviderCard
-                      key={provider.id}
-                      provider={provider}
-                      onEdit={() => setEditingProvider(provider)}
-                      onDelete={() => {
-                        if (confirm(`Delete "${provider.name}"?`)) {
-                          deleteMutation.mutate(provider.id);
-                        }
-                      }}
-                      isDeleting={deleteMutation.isPending}
-                    />
-                  ))}
-                </div>
+          <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
+            <aside className="lg:sticky lg:top-20 lg:self-start">
+              <nav className="rounded-lg border bg-card p-1.5">
+                {SETTINGS_SECTIONS.map((section) => {
+                  const Icon = section.icon;
+                  const active = activeSection === section.id;
+
+                  return (
+                    <button
+                      key={section.id}
+                      type="button"
+                      onClick={() => setSearchParams(section.id === 'providers' ? {} : { section: section.id })}
+                      className={cn(
+                        "flex w-full items-start gap-3 rounded-md px-3 py-2.5 text-left transition-colors",
+                        active ? "bg-primary/10 text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )}
+                    >
+                      <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", active && "text-primary")} />
+                      <span className="min-w-0">
+                        <span className="block font-mono text-xs font-medium">{section.label}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </nav>
+            </aside>
+
+            <div className="min-w-0">
+              {activeSection === 'providers' ? (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                          <Cpu className="h-4 w-4 text-primary" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-base font-mono">Providers</CardTitle>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Configure AI providers for your projects
+                          </p>
+                        </div>
+                      </div>
+                      <Button size="sm" onClick={() => setCreateOpen(true)} className="font-mono text-xs">
+                        <Plus className="h-3.5 w-3.5 mr-1.5" />
+                        Add Provider
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {providersQuery.data && providersQuery.data.length > 0 ? (
+                      <div className="space-y-2">
+                        {providersQuery.data.map((provider) => (
+                          <ProviderCard
+                            key={provider.id}
+                            provider={provider}
+                            onEdit={() => setEditingProvider(provider)}
+                            onDelete={() => {
+                              if (confirm(`Delete "${provider.name}"?`)) {
+                                deleteMutation.mutate(provider.id);
+                              }
+                            }}
+                            isDeleting={deleteMutation.isPending}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <p className="font-mono text-sm">No providers configured</p>
+                        <p className="font-mono text-xs mt-1">Add a provider to get started</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p className="font-mono text-sm">No providers configured</p>
-                  <p className="font-mono text-xs mt-1">Add a provider to get started</p>
-                </div>
+                <MembersPanel showHeader={false} />
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </main>
 
