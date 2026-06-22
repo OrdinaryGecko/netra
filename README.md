@@ -5,14 +5,14 @@ AI guardrails middleware. Sits between your application and LLM providers, appli
 ## Features
 
 - **OpenAI-compatible proxy** — drop-in replacement endpoint at `POST /v1/chat/completions`
-- **Deterministic guardrails** — max message length, keyword detection with masking, PII detection, JSON format enforcement
+- **Guardrail rules** — max message length, keyword detection with masking, PII detection, JSON format enforcement, AI classifier rules
 - **Policy composition** — multiple policy sets per environment, priority-ordered, all rules evaluate
 - **Versioned policies** — draft → publish → archive lifecycle, clone for safe iteration
 - **Multi-tenant** — schema-per-tenant isolation via subdomain (`acme.localhost`)
 - **Role-based access** — owner, admin, editor, viewer, auditor with enforced permissions
-- **React admin console** — policy management, dry-run testing, pipeline visualization, member management
+- **React admin console** — policy management, dry-run testing, pipeline visualization, project providers, member management
 - **Email notifications** — password reset and member invite emails (Letter Opener in dev)
-- **Provider abstraction** — built-in `stub` adapter for local dev, OpenAI scaffolded
+- **Provider abstraction** — built-in `stub` adapter for local dev and project-scoped provider selection per environment
 
 ## Architecture
 
@@ -20,7 +20,7 @@ AI guardrails middleware. Sits between your application and LLM providers, appli
 Client App → Netra (API key + org slug) → Input rules → LLM Provider → Output rules → Response
 ```
 
-Admin dashboard → Netra (JWT auth + org slug) → Manage policies, rules, members
+Admin dashboard → Netra (JWT auth + org slug) → Manage policies, rules, project providers, members
 
 Each organization gets its own PostgreSQL schema. Tenant isolation is handled by `ros-apartment` — all data (users, projects, policies, rules, requests) lives in the tenant schema. Only the `organizations` table (tenant registry) is shared.
 
@@ -86,6 +86,7 @@ curl http://localhost:3000/v1/admin/projects \
 | `keyword_detector` | block, mask, allow, log_only | Detect keywords; block or redact with custom replacement |
 | `pii_detector` | block, mask, allow, log_only | Detect emails, phone numbers, SSNs |
 | `json_format` | block, allow, log_only | Enforce valid JSON output |
+| `ai_classifier` | block, allow, log_only | Classify prompts or responses with preset AI safety classifiers |
 
 ## Roles
 
