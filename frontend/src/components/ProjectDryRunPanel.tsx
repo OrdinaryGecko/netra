@@ -4,8 +4,7 @@ import { useCurrentProject } from '@/contexts/AuthContext';
 import { fetchPolicySetsForProject, fetchProjectProviders, fetchProviders } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MessageSquare, Cpu, Info } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { MessageSquare } from 'lucide-react';
 import { DryRunChat } from './DryRunChat';
 
 interface ProjectDryRunPanelProps {
@@ -56,17 +55,8 @@ export function ProjectDryRunPanel({ projectId }: ProjectDryRunPanelProps) {
   if (enabledSets.length === 0) {
     return (
       <div className="space-y-4">
-        <Select value={environment} onValueChange={setEnvironment}>
-          <SelectTrigger className="w-[160px] font-mono text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="development" className="font-mono text-xs">Development</SelectItem>
-            <SelectItem value="staging" className="font-mono text-xs">Staging</SelectItem>
-            <SelectItem value="production" className="font-mono text-xs">Production</SelectItem>
-          </SelectContent>
-        </Select>
         <Card>
+          <DryRunHeader environment={environment} onEnvironmentChange={setEnvironment} />
           <CardContent className="py-12 text-center text-muted-foreground font-mono text-sm">
             No active, enabled policy sets for the <span className="font-semibold">{environment}</span> environment.
           </CardContent>
@@ -77,34 +67,8 @@ export function ProjectDryRunPanel({ projectId }: ProjectDryRunPanelProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Select value={environment} onValueChange={setEnvironment}>
-          <SelectTrigger className="w-[160px] font-mono text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="development" className="font-mono text-xs">Development</SelectItem>
-            <SelectItem value="staging" className="font-mono text-xs">Staging</SelectItem>
-            <SelectItem value="production" className="font-mono text-xs">Production</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
       <Card>
-        <CardHeader>
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-              <MessageSquare className="h-4 w-4 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <CardTitle className="text-base font-mono">Dry run</CardTitle>
-              <CardDescription className="text-xs mt-0.5">
-                Test your guardrails in a conversational interface.
-                Each message is evaluated against your policies.
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
+        <DryRunHeader environment={environment} onEnvironmentChange={setEnvironment} />
         <CardContent>
           <DryRunChat
             projectId={projectId}
@@ -119,40 +83,38 @@ export function ProjectDryRunPanel({ projectId }: ProjectDryRunPanelProps) {
   );
 }
 
-function ProviderBadge({
-  providerName,
-  providerType,
-  defaultModel,
+function DryRunHeader({
   environment,
+  onEnvironmentChange,
 }: {
-  providerName?: string;
-  providerType?: string;
-  defaultModel?: string | null;
   environment: string;
+  onEnvironmentChange: (environment: string) => void;
 }) {
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground cursor-default">
-            <Cpu className="h-3 w-3" />
-            {providerType ? (
-              <span>
-                <span className="font-medium text-foreground">{providerName || providerType}</span>
-                {defaultModel && <span> / {defaultModel}</span>}
-              </span>
-            ) : (
-              <span>No provider</span>
-            )}
-            <Info className="h-3 w-3 opacity-50" />
+    <CardHeader>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <MessageSquare className="h-4 w-4 text-primary" />
           </div>
-        </TooltipTrigger>
-        <TooltipContent className="font-mono text-xs max-w-[250px]">
-          {providerType
-            ? `Using ${providerName || providerType} for the ${environment} environment. Change provider in project settings.`
-            : `No provider set for the ${environment} environment. Set one in project settings.`}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+          <div className="flex-1 min-w-0">
+            <CardTitle className="text-base font-mono">Dry run</CardTitle>
+            <CardDescription className="text-xs mt-0.5">
+              Test your guardrails in a conversational interface.
+            </CardDescription>
+          </div>
+        </div>
+        <Select value={environment} onValueChange={onEnvironmentChange}>
+          <SelectTrigger className="w-full sm:w-[160px] font-mono text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="development" className="font-mono text-xs">Development</SelectItem>
+            <SelectItem value="staging" className="font-mono text-xs">Staging</SelectItem>
+            <SelectItem value="production" className="font-mono text-xs">Production</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </CardHeader>
   );
 }
