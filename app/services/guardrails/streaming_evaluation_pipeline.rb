@@ -29,13 +29,14 @@ module Guardrails
       last_eval_at = 0
       violated = false
       violation_reasons = []
+      streaming_output_rules = @output_rules.reject { |rule| rule.kind == "ai_classifier" }
 
       build_provider.stream(messages: forwarded_messages) do |content, raw_data|
         accumulated_text += content
 
-        if @output_rules.any? && (accumulated_text.length - last_eval_at) >= EVAL_INTERVAL
+        if streaming_output_rules.any? && (accumulated_text.length - last_eval_at) >= EVAL_INTERVAL
           last_eval_at = accumulated_text.length
-          output_decision = Evaluator.call(rules: @output_rules, content: accumulated_text, options: options)
+          output_decision = Evaluator.call(rules: streaming_output_rules, content: accumulated_text, options: options, context: evaluation_context)
 
           if output_decision[:blocked]
             violated = true
@@ -49,7 +50,7 @@ module Guardrails
 
       unless violated
         if @output_rules.any?
-          output_decision = Evaluator.call(rules: @output_rules, content: accumulated_text, options: options)
+          output_decision = Evaluator.call(rules: @output_rules, content: accumulated_text, options: options, context: evaluation_context)
           if output_decision[:blocked]
             violated = true
             violation_reasons = output_decision[:reasons]

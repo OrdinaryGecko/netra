@@ -26,7 +26,8 @@ module Guardrails
         rules: @policy_version.rules.enabled.where(stage: "input"),
         content: combined_input,
         options: options,
-        messages: messages
+        messages: messages,
+        context: evaluation_context
       )
 
       if input_decision[:blocked]
@@ -51,7 +52,8 @@ module Guardrails
         rules: @policy_version.rules.enabled.where(stage: "output"),
         content: provider_response[:content],
         options: options,
-        provider_response:
+        provider_response:,
+        context: evaluation_context
       )
 
       action = if output_decision[:blocked]
@@ -96,7 +98,8 @@ module Guardrails
         rules: input_rules,
         content: combined_input,
         options: options,
-        messages: messages
+        messages: messages,
+        context: evaluation_context
       )
 
       if input_decision[:blocked]
@@ -122,7 +125,8 @@ module Guardrails
         rules: output_rules,
         content: provider_response[:content],
         options: options,
-        provider_response:
+        provider_response:,
+        context: evaluation_context
       )
 
       action = if output_decision[:blocked]
@@ -230,9 +234,26 @@ module Guardrails
         return "Invalid JSON format#{": #{error}" if error.present?}" if evaluation[:outcome] == "matched"
 
         "Valid JSON"
+      when "ai_classifier"
+        classifier = details[:classifier_name] || details["classifier_name"] || details[:classifier] || details["classifier"] || "AI classifier"
+        verdict = details[:verdict] || details["verdict"] || evaluation[:outcome]
+        rationale = details[:rationale] || details["rationale"]
+        error = details[:error] || details["error"]
+
+        return "#{classifier} failed: #{error}" if error.present?
+        return "#{classifier} matched#{": #{rationale}" if rationale.present?}" if verdict == "matched"
+
+        "#{classifier} clean#{": #{rationale}" if rationale.present?}"
       else
         evaluation[:outcome] == "matched" ? "Rule triggered" : "No match"
       end
+    end
+
+    def evaluation_context
+      {
+        project: @project || @policy_version&.policy_set&.client_application&.project,
+        environment: normalized_payload[:environment]
+      }
     end
 
     def provider

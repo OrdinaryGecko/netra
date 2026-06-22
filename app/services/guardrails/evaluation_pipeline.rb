@@ -86,14 +86,22 @@ module Guardrails
         content:,
         options:,
         provider_response:,
-        messages:
+        messages:,
+        context: evaluation_context
       )
     end
 
     def persist_evaluations!(request_record:, evaluations:)
       evaluations.each do |evaluation|
-        request_record.guardrail_evaluations.create!(evaluation)
+        request_record.guardrail_evaluations.create!(evaluation.except(:rule_id))
       end
+    end
+
+    def evaluation_context
+      {
+        project: @project,
+        environment:
+      }
     end
 
     def finalize_block!(request_record:, policy_versions:, reasons:)

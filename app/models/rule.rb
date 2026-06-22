@@ -1,5 +1,5 @@
 class Rule < ApplicationRecord
-  KINDS = %w[max_message_chars keyword_detector pii_detector json_format].freeze
+  KINDS = %w[max_message_chars keyword_detector pii_detector json_format ai_classifier].freeze
   ACTIONS = %w[allow block mask log_only].freeze
   STAGES = %w[input output].freeze
 
@@ -7,7 +7,8 @@ class Rule < ApplicationRecord
     "max_message_chars" => %w[block allow log_only],
     "keyword_detector" => %w[block mask allow log_only],
     "pii_detector" => %w[block mask allow log_only],
-    "json_format" => %w[block allow log_only]
+    "json_format" => %w[block allow log_only],
+    "ai_classifier" => %w[block allow log_only]
   }.freeze
 
   belongs_to :policy_version
@@ -17,6 +18,7 @@ class Rule < ApplicationRecord
   validates :stage, inclusion: { in: STAGES }
   validates :action, inclusion: { in: ACTIONS }
   validate :action_allowed_for_kind
+  validate :ai_classifier_config_valid
   validate :mask_not_allowed_on_output
   validate :policy_version_must_be_draft
 
@@ -39,6 +41,15 @@ class Rule < ApplicationRecord
     return unless action == "mask" && stage == "output"
 
     errors.add(:action, "mask is not supported on output stage")
+  end
+
+  def ai_classifier_config_valid
+    return unless kind == "ai_classifier"
+
+    classifier = config&.fetch("classifier", nil).to_s
+    return if Guardrails::AiClassifierRegistry.exists?(classifier)
+
+    errors.add(:config, "classifier is not supported")
   end
 
   def policy_version_must_be_draft

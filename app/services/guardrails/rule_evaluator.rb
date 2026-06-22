@@ -1,13 +1,14 @@
 module Guardrails
   class RuleEvaluator
-    def self.call(rule:, content:, options:)
-      new(rule:, content:, options:).call
+    def self.call(rule:, content:, options:, context: {})
+      new(rule:, content:, options:, context:).call
     end
 
-    def initialize(rule:, content:, options:)
+    def initialize(rule:, content:, options:, context: {})
       @rule = rule
       @content = content.to_s
       @options = options
+      @context = context
       @config = rule.config || {}
     end
 
@@ -33,6 +34,8 @@ module Guardrails
 
         JSON.parse(@content)
         clean(required: true)
+      when "ai_classifier"
+        AiClassifierEvaluator.call(rule: @rule, content: @content, context: @context)
       else
         clean(skipped: true)
       end

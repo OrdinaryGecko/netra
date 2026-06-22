@@ -1,15 +1,16 @@
 module Guardrails
   class Evaluator
-    def self.call(rules:, content:, options:, provider_response: nil, messages: nil)
-      new(rules:, content:, options:, provider_response:, messages:).call
+    def self.call(rules:, content:, options:, provider_response: nil, messages: nil, context: {})
+      new(rules:, content:, options:, provider_response:, messages:, context:).call
     end
 
-    def initialize(rules:, content:, options:, provider_response: nil, messages: nil)
+    def initialize(rules:, content:, options:, provider_response: nil, messages: nil, context: {})
       @rules = rules
       @content = content
       @options = options || {}
       @provider_response = provider_response
       @messages = messages
+      @context = context || {}
     end
 
     def call
@@ -23,7 +24,7 @@ module Guardrails
       @rules.each do |rule|
         started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         scoped_content = scoped_content_for(rule)
-        outcome, details = RuleEvaluator.call(rule:, content: scoped_content[:content], options: @options)
+        outcome, details = RuleEvaluator.call(rule:, content: scoped_content[:content], options: @options, context: @context)
         latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round
 
         if outcome == "matched"
@@ -40,6 +41,7 @@ module Guardrails
 
         evaluations << {
           stage: rule.stage,
+          rule_id: rule.id,
           rule_name: rule.name,
           rule_kind: rule.kind,
           outcome:,

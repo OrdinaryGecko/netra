@@ -22,7 +22,8 @@ module Guardrails
         rules: @input_rules,
         content: combined_input,
         options: options,
-        messages: request_messages
+        messages: request_messages,
+        context: evaluation_context
       )
     end
 
@@ -66,6 +67,13 @@ module Guardrails
 
     def options
       @request_payload[:options] || {}
+    end
+
+    def evaluation_context
+      {
+        project: @project,
+        environment:
+      }
     end
 
     def mask_messages(messages, keywords, replacement = "[REDACTED]")

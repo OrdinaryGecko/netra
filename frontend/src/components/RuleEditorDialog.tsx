@@ -54,6 +54,15 @@ const ruleTemplates: Record<RuleKind, {
     action: 'block',
     config: {},
   },
+  ai_classifier: {
+    name: 'AI classifier',
+    stage: 'input',
+    action: 'block',
+    config: {
+      classifier: 'jailbreak',
+      scope: 'latest_user_message',
+    },
+  },
 };
 
 const ALLOWED_ACTIONS_BY_KIND: Record<RuleKind, RuleAction[]> = {
@@ -61,6 +70,7 @@ const ALLOWED_ACTIONS_BY_KIND: Record<RuleKind, RuleAction[]> = {
   keyword_detector: ['block', 'mask', 'allow', 'log_only'],
   pii_detector: ['block', 'mask', 'allow', 'log_only'],
   json_format: ['block', 'allow', 'log_only'],
+  ai_classifier: ['block', 'allow', 'log_only'],
 };
 
 const defaultRule: Omit<Rule, 'id'> = {
@@ -85,6 +95,17 @@ const ruleScopes: Array<{ value: RuleScope; label: string }> = [
   { value: 'full_conversation', label: 'Full Conversation' },
 ];
 
+const aiClassifiers = [
+  { value: 'profanity', label: 'Profanity', description: 'Flags abusive, vulgar, or obscene language.' },
+  { value: 'hate_speech', label: 'Hate Speech', description: 'Flags attacks against protected classes.' },
+  { value: 'harassment', label: 'Harassment', description: 'Flags targeted abuse, bullying, or threats.' },
+  { value: 'self_harm', label: 'Self-harm', description: 'Flags self-harm intent or instructions.' },
+  { value: 'jailbreak', label: 'Jailbreak', description: 'Flags attempts to bypass system or policy instructions.' },
+  { value: 'sexual_content', label: 'Sexual Content', description: 'Flags explicit sexual content.' },
+  { value: 'violence', label: 'Violence', description: 'Flags violent threats or instructions.' },
+  { value: 'illegal_activity', label: 'Illegal Activity', description: 'Flags requests to facilitate illegal activity.' },
+];
+
 export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false }: RuleEditorDialogProps) {
   const [form, setForm] = useState<Omit<Rule, 'id'> & { id?: string }>(defaultRule);
 
@@ -94,6 +115,7 @@ export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false
   const [replacement, setReplacement] = useState('');
   const [scope, setScope] = useState<RuleScope>('latest_user_message');
   const [messageCount, setMessageCount] = useState(4);
+  const [classifier, setClassifier] = useState('jailbreak');
 
   useEffect(() => {
     if (rule) {
@@ -103,6 +125,7 @@ export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false
       setReplacement((rule.config.replacement as string) || '');
       setScope((rule.config.scope as RuleScope) || 'latest_user_message');
       setMessageCount(Number(rule.config.message_count || 4));
+      setClassifier((rule.config.classifier as string) || 'jailbreak');
     } else {
       setForm(defaultRule);
       setMaxChars(4000);
@@ -110,6 +133,7 @@ export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false
       setReplacement('');
       setScope('latest_user_message');
       setMessageCount(4);
+      setClassifier('jailbreak');
     }
   }, [rule, open]);
 
@@ -130,6 +154,7 @@ export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false
     setKeywords(Array.isArray(template.config.keywords) ? (template.config.keywords as string[]).join('\n') : '');
     setReplacement('');
     setScope((template.config.scope as RuleScope) || 'latest_user_message');
+    setClassifier((template.config.classifier as string) || 'jailbreak');
   };
 
   const buildConfig = (): Record<string, unknown> => {
@@ -143,6 +168,9 @@ export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false
       if (form.action === 'mask' && replacement) {
         config.replacement = replacement;
       }
+    }
+    if (form.kind === 'ai_classifier') {
+      config.classifier = classifier;
     }
     if (form.stage === 'input') {
       config.scope = scope;
@@ -192,6 +220,7 @@ export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false
                   <SelectItem value="keyword_detector">Keyword Detector</SelectItem>
                   <SelectItem value="pii_detector">PII Detector</SelectItem>
                   <SelectItem value="json_format">JSON Format</SelectItem>
+                  <SelectItem value="ai_classifier">AI Classifier</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -293,6 +322,24 @@ export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false
               <p className="text-[10px] font-mono text-muted-foreground">Leave empty to default to [REDACTED]</p>
             </div>
           )}
+          {form.kind === 'ai_classifier' && (
+            <>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Classifier</Label>
+                <Select value={classifier} onValueChange={setClassifier} disabled={readOnly}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {aiClassifiers.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] font-mono text-muted-foreground">
+                  {aiClassifiers.find((item) => item.value === classifier)?.description || 'Flags a preset content category using an internal judge.'}
+                </p>
+              </div>
+            </>
+          )}
           <div className="space-y-1.5">
             <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Config (JSON)</Label>
             <Textarea
@@ -306,6 +353,7 @@ export function RuleEditorDialog({ open, onClose, onSave, rule, readOnly = false
                   if (parsed.replacement !== undefined) setReplacement(String(parsed.replacement || ''));
                   if (parsed.scope !== undefined) setScope(parsed.scope as RuleScope);
                   if (parsed.message_count !== undefined) setMessageCount(Number(parsed.message_count));
+                  if (parsed.classifier !== undefined) setClassifier(String(parsed.classifier || 'jailbreak'));
                 } catch { /* ignore invalid JSON while typing */ }
               }}
               disabled={readOnly}

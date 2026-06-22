@@ -93,6 +93,29 @@ class RuleTest < ActiveSupport::TestCase
     end
   end
 
+  test "valid ai classifier rule with supported classifier" do
+    within_tenant("test") do
+      rule = @draft_version.rules.new(name: "test", kind: "ai_classifier", stage: "input", action: "block", priority: 10, config: { classifier: "jailbreak" })
+      assert rule.valid?
+    end
+  end
+
+  test "ai classifier rejects unsupported classifier" do
+    within_tenant("test") do
+      rule = @draft_version.rules.new(name: "test", kind: "ai_classifier", stage: "input", action: "block", priority: 10, config: { classifier: "unknown" })
+      assert_not rule.valid?
+      assert rule.errors[:config].any?
+    end
+  end
+
+  test "mask action rejected for ai_classifier" do
+    within_tenant("test") do
+      rule = @draft_version.rules.new(name: "test", kind: "ai_classifier", stage: "input", action: "mask", priority: 10, config: { classifier: "jailbreak" })
+      assert_not rule.valid?
+      assert rule.errors[:action].any?
+    end
+  end
+
   test "cannot create rule on active policy version" do
     within_tenant("test") do
       @draft_version.publish!

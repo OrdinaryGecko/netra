@@ -16,7 +16,11 @@ class Project < ApplicationRecord
   end
 
   def default_provider_for(environment)
-    project_providers.defaults.for_environment(environment).includes(:provider).first&.provider
+    default_project_provider_for(environment)&.provider
+  end
+
+  def default_project_provider_for(environment)
+    project_providers.defaults.for_environment(environment).includes(:provider).first
   end
 
   def link_stub_providers!

@@ -19,6 +19,18 @@ const kindLabels: Record<string, string> = {
   keyword_detector: 'Keyword Detect',
   pii_detector: 'PII Detector',
   json_format: 'JSON Format',
+  ai_classifier: 'AI Classifier',
+};
+
+const classifierLabels: Record<string, string> = {
+  profanity: 'Profanity',
+  hate_speech: 'Hate Speech',
+  harassment: 'Harassment',
+  self_harm: 'Self-harm',
+  jailbreak: 'Jailbreak',
+  sexual_content: 'Sexual Content',
+  violence: 'Violence',
+  illegal_activity: 'Illegal Activity',
 };
 
 const actionColors: Record<string, string> = {
@@ -58,7 +70,15 @@ export function RulesTable({ rules, isDraft, onToggle, onEdit, onDelete, onAdd }
               <tr key={rule.id} className={cn('border-b border-border last:border-0 transition-colors hover:bg-muted/50', !rule.enabled && 'opacity-50')}>
                 <td className="px-4 py-3 font-medium text-foreground">{rule.name}</td>
                 <td className="px-4 py-3">
-                  <span className="font-mono text-xs text-muted-foreground">{kindLabels[rule.kind]}</span>
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {kindLabels[rule.kind]}
+                    {rule.kind === 'ai_classifier' && (
+                      <>
+                        {' '}
+                        / {classifierLabels[String(rule.config?.classifier || '')] || String(rule.config?.classifier || 'Unknown')}
+                      </>
+                    )}
+                  </span>
                 </td>
                 <td className="px-4 py-3">
                   <span className="font-mono text-xs text-muted-foreground uppercase">{rule.stage}</span>
