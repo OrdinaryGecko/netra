@@ -255,7 +255,12 @@ export default function Policies() {
                             <FileText className="h-4 w-4 text-primary" />
                           </div>
                           <div className="min-w-0">
-                            <CardTitle className="text-base font-mono truncate">{policy.name}</CardTitle>
+                            <div className="flex items-center gap-2">
+                              <CardTitle className="text-base font-mono truncate">{policy.name}</CardTitle>
+                              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase shrink-0">
+                                {policy.environment}
+                              </span>
+                            </div>
                             <CardDescription className="text-xs mt-0.5">{policy.description}</CardDescription>
                           </div>
                         </div>
