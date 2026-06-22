@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useCurrentProject } from '@/contexts/AuthContext';
-import { fetchPolicySetsForProject, fetchProjectProviders } from '@/lib/api';
+import { fetchPolicySetsForProject, fetchProjectProviders, fetchProviders } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MessageSquare, Cpu, Info } from 'lucide-react';
@@ -26,6 +26,11 @@ export function ProjectDryRunPanel({ projectId }: ProjectDryRunPanelProps) {
     queryFn: () => fetchProjectProviders(projectId),
   });
 
+  const providersQuery = useQuery({
+    queryKey: ['providers'],
+    queryFn: fetchProviders,
+  });
+
   const enabledSets = useMemo(
     () =>
       policySetsQuery.data?.filter(
@@ -38,6 +43,15 @@ export function ProjectDryRunPanel({ projectId }: ProjectDryRunPanelProps) {
     () => projectProvidersQuery.data?.find((pp) => pp.isDefault && pp.environment === environment),
     [projectProvidersQuery.data, environment]
   );
+
+  const resolvedModel = useMemo(() => {
+    if (defaultProvider?.defaultModel) return defaultProvider.defaultModel;
+    if (defaultProvider?.providerId) {
+      const parentProvider = providersQuery.data?.find((p) => p.id === defaultProvider.providerId);
+      return parentProvider?.defaultModel || null;
+    }
+    return null;
+  }, [defaultProvider, providersQuery.data]);
 
   if (enabledSets.length === 0) {
     return (
@@ -97,7 +111,7 @@ export function ProjectDryRunPanel({ projectId }: ProjectDryRunPanelProps) {
             environment={environment}
             providerName={defaultProvider?.providerName}
             providerType={defaultProvider?.providerType}
-            defaultModel={defaultProvider?.defaultModel}
+            defaultModel={resolvedModel}
           />
         </CardContent>
       </Card>

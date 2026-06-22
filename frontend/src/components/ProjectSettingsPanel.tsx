@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import { updateProject, fetchProviders, fetchProjectProviders, updateProjectProvider, addProjectProvider } from '@/lib/api';
+import { updateProject, fetchProviders, fetchProjectProviders, updateProjectProvider, addProjectProvider, fetchProviderModels } from '@/lib/api';
 import { Project, Provider } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
 import { toast } from 'sonner';
@@ -67,6 +68,17 @@ export function ProjectSettingsPanel({ project }: ProjectSettingsPanelProps) {
     },
   });
 
+  const updateModelMutation = useMutation({
+    mutationFn: ({ projectProviderId, model }: { projectProviderId: string; model: string }) => {
+      return updateProjectProvider(project.id, projectProviderId, { default_model: model || null });
+    },
+    onSuccess: async () => {
+      await projectProvidersQuery.refetch();
+      toast.success('Model updated');
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const dirty = name !== project.name || active !== project.active;
 
   return (
@@ -123,6 +135,13 @@ export function ProjectSettingsPanel({ project }: ProjectSettingsPanelProps) {
                     }
                   }}
                 />
+                {currentPp && currentPp.providerType !== 'stub' && (
+                  <ModelPicker
+                    providerId={currentPp.providerId}
+                    value={currentPp.defaultModel || ''}
+                    onChange={(model) => updateModelMutation.mutate({ projectProviderId: currentPp.id, model })}
+                  />
+                )}
                 {!currentPp && (
                   <span className="font-mono text-[10px] text-muted-foreground italic">Not configured</span>
                 )}
@@ -132,6 +151,93 @@ export function ProjectSettingsPanel({ project }: ProjectSettingsPanelProps) {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function ModelPicker({
+  providerId,
+  value,
+  onChange,
+}: {
+  providerId: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const modelsQuery = useQuery({
+    queryKey: ['provider-models', providerId],
+    queryFn: () => fetchProviderModels(providerId),
+    enabled: !!providerId && open,
+  });
+
+  const models = modelsQuery.data || [];
+  const selected = models.find((m) => m.id === value);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            "flex h-8 w-[180px] items-center justify-between rounded-md border border-input bg-background px-3 py-1 text-xs ring-offset-background shrink-0",
+            "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+            "font-mono"
+          )}
+        >
+          {selected ? (
+            <span className="truncate">{selected.name}</span>
+          ) : value ? (
+            <span className="truncate">{value}</span>
+          ) : (
+            <span className="text-muted-foreground">Default model</span>
+          )}
+          <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[300px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Search models..." className="h-8 font-mono text-xs" />
+          <CommandEmpty className="font-mono text-xs py-2">
+            {modelsQuery.isLoading ? 'Loading models...' : 'No models found.'}
+          </CommandEmpty>
+          <CommandGroup className="max-h-[250px] overflow-y-auto">
+            {value && (
+              <CommandItem
+                value="use-provider-default"
+                onSelect={() => {
+                  onChange('');
+                  setOpen(false);
+                }}
+                className="flex items-center gap-2 py-2 cursor-pointer"
+              >
+                <Check className={cn("h-3.5 w-3.5 shrink-0", !value ? "opacity-100" : "opacity-0")} />
+                <span className="font-mono text-xs text-muted-foreground italic">Use provider default</span>
+              </CommandItem>
+            )}
+            {models.map((m) => (
+              <CommandItem
+                key={m.id}
+                value={`${m.name} ${m.id}`}
+                onSelect={() => {
+                  onChange(m.id);
+                  setOpen(false);
+                }}
+                className="flex items-center gap-2 py-2 cursor-pointer"
+              >
+                <Check className={cn("h-3.5 w-3.5 shrink-0", value === m.id ? "opacity-100" : "opacity-0")} />
+                <div className="flex-1 min-w-0">
+                  <span className="font-mono text-xs font-medium">{m.name}</span>
+                  {m.name !== m.id && (
+                    <span className="font-mono text-[10px] text-muted-foreground ml-2">{m.id}</span>
+                  )}
+                </div>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
 

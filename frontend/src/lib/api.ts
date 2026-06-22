@@ -368,7 +368,7 @@ export async function addProjectProvider(projectId: string, params: {
 export async function updateProjectProvider(projectId: string, id: string, params: {
   provider_id?: string;
   is_default?: boolean;
-  default_model?: string;
+  default_model?: string | null;
 }): Promise<ProjectProvider> {
   const body: Record<string, unknown> = { ...params };
   if (body.provider_id) body.provider_id = Number(body.provider_id);
