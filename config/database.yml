@@ -1,4 +1,4 @@
-# PostgreSQL. Versions 9.3 and up are supported.
+# PostgreSQL
 #
 # Install the pg driver:
 #   gem install pg
@@ -11,23 +11,26 @@
 #
 # Configure Using Gemfile
 # gem "pg"
-#
+
 default: &default
   adapter: postgresql
   encoding: unicode
-  max_connections: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+
+development:
+  <<: *default
+  database: <%= ENV.fetch("DB_NAME", "netra_development") %>
   host: <%= ENV.fetch("DB_HOST", "localhost") %>
   port: <%= ENV.fetch("DB_PORT", 5432) %>
   username: <%= ENV.fetch("DB_USERNAME", nil) %>
   password: <%= ENV.fetch("DB_PASSWORD", nil) %>
 
-development:
-  <<: *default
-  database: <%= ENV.fetch("DB_NAME", "netra_development") %>
-
 test:
   <<: *default
   database: <%= ENV.fetch("DB_NAME_TEST", "netra_test") %>
+  host: <%= ENV.fetch("DB_HOST_TEST", "localhost") %>
+  port: <%= ENV.fetch("DB_PORT_TEST", 5432) %>
+  username: <%= ENV.fetch("DB_USERNAME_TEST", nil) %>
+  password: <%= ENV.fetch("DB_PASSWORD_TEST", nil) %>
 
 # As with config/credentials.yml, you never want to store sensitive information,
 # like your database password, in your source code. If your source code is
@@ -57,9 +60,12 @@ test:
 #
 production:
   primary: &primary_production
-    <<: *default
+    adapter: postgresql
+    encoding: unicode
     database: <%= ENV.fetch("DB_NAME", "netra") %>
-    username: <%= ENV.fetch("DB_USERNAME", "netra") %>
+    host: <%= ENV["DB_HOST"] %>
+    port: <%= ENV.fetch("DB_PORT", 5432) %>
+    username: <%= ENV["DB_USERNAME"] %>
     password: <%= ENV["DB_PASSWORD"] %>
   cache:
     <<: *primary_production
