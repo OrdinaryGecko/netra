@@ -33,7 +33,7 @@ export function ProjectDryRunPanel({ projectId }: ProjectDryRunPanelProps) {
   const enabledSets = useMemo(
     () =>
       policySetsQuery.data?.filter(
-        (ps) => ps.enabled
+        (ps) => ps.enabled && ps.policyVersions.some((v) => v.status === 'active')
       ) || [],
     [policySetsQuery.data]
   );
@@ -58,7 +58,7 @@ export function ProjectDryRunPanel({ projectId }: ProjectDryRunPanelProps) {
         <Card>
           <DryRunHeader environment={environment} onEnvironmentChange={setEnvironment} />
           <CardContent className="py-12 text-center text-muted-foreground font-mono text-sm">
-            No active, enabled policy sets for the <span className="font-semibold">{environment}</span> environment.
+            No active policy versions for the <span className="font-semibold">{environment}</span> environment. Publish a policy version to test.
           </CardContent>
         </Card>
       </div>

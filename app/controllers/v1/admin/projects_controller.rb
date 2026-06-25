@@ -60,6 +60,8 @@ module V1
         render json: result.as_json, status: :ok
       rescue Guardrails::ValidationError => e
         render_error("invalid_request", status: :unprocessable_entity, details: e.errors)
+      rescue Guardrails::PolicyNotFoundError => e
+        render_error("no_active_policy", status: :unprocessable_entity, details: [e.message])
       rescue Guardrails::ProviderError => e
         render_error("provider_error", status: :unprocessable_entity, details: [e.message])
       rescue ActiveRecord::RecordInvalid => e
