@@ -1,6 +1,6 @@
 module OpenAi
   class ChatCompletionResponse
-    def initialize(result:, requested_model:)
+    def initialize(result:, requested_model: nil)
       @result = result
       @requested_model = requested_model
     end

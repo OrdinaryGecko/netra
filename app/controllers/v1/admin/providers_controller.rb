@@ -102,7 +102,9 @@ module V1
       end
 
       def provider_params
-        params.require(:provider).permit(:name, :provider_type, :base_url, :api_key, :default_model, :active)
+        permitted = params.require(:provider).permit(:name, :provider_type, :base_url, :api_key, :default_model, :active)
+        permitted.delete(:provider_type) if permitted[:provider_type].present? && request.patch?
+        permitted
       end
 
       def fetch_models_from_provider(provider)

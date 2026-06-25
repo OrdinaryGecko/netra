@@ -6,8 +6,14 @@ class ChatCompletionsTest < ActionDispatch::IntegrationTest
   setup do
     create_tenant!("test")
     Apartment::Tenant.switch("test") do
-      @client_application = ClientApplication.create!(name: "Chat App", key: "chat-app")
+      @stub_provider = Provider.find_or_create_by!(name: "Stub Provider") do |p|
+        p.provider_type = "stub"
+        p.default_model = "stub-v1"
+      end
+      @project = Project.create!(name: "Chat Project", key: "chat-project")
+      @client_application = @project.client_applications.create!(name: "Chat App", key: "chat-app")
       @client_application.agents.create!(name: "Assistant", identifier: "assistant")
+      @project.project_providers.create!(provider: @stub_provider, environment: "development", is_default: true)
       @policy_set = @client_application.policy_sets.create!(name: "default", environment: "development")
       @policy_version = @policy_set.policy_versions.create!(version: "1", status: "draft")
       @policy_version.rules.create!(name: "max-input", kind: "max_message_chars", stage: "input", action: "block", priority: 10, config: { max: 20 })
@@ -19,9 +25,9 @@ class ChatCompletionsTest < ActionDispatch::IntegrationTest
 
   test "returns an openai compatible chat completion via bearer auth" do
     post "/v1/chat/completions",
-      params: { model: "stub-v1", messages: [{ role: "user", content: "Return JSON" }], response_format: { type: "json_object" } },
+      params: { messages: [{ role: "user", content: "Return JSON" }], response_format: { type: "json_object" } },
       as: :json,
-      headers: { "Authorization" => "Bearer #{@plaintext_key}", "X-Netra-Provider" => "stub", "X-Netra-Agent-Identifier" => "assistant", "X-Netra-Org-Slug" => "test" }
+      headers: { "Authorization" => "Bearer #{@plaintext_key}", "X-Netra-Agent-Identifier" => "assistant", "X-Netra-Org-Slug" => "test" }
 
     assert_response :success
     body = JSON.parse(response.body)
@@ -30,9 +36,9 @@ class ChatCompletionsTest < ActionDispatch::IntegrationTest
 
   test "returns a blocked error payload" do
     post "/v1/chat/completions",
-      params: { model: "stub-v1", messages: [{ role: "user", content: "x" * 25 }] },
+      params: { messages: [{ role: "user", content: "x" * 25 }] },
       as: :json,
-      headers: { "Authorization" => "Bearer #{@plaintext_key}", "X-Netra-Provider" => "stub", "X-Netra-Org-Slug" => "test" }
+      headers: { "Authorization" => "Bearer #{@plaintext_key}", "X-Netra-Org-Slug" => "test" }
 
     assert_response :unprocessable_entity
     body = JSON.parse(response.body)

@@ -6,10 +6,14 @@ class StreamChatCompletionsTest < ActionDispatch::IntegrationTest
   setup do
     create_tenant!("test")
     Apartment::Tenant.switch("test") do
+      @stub_provider = Provider.find_or_create_by!(name: "Stub Provider") do |p|
+        p.provider_type = "stub"
+        p.default_model = "stub-v1"
+      end
       @project = Project.create!(name: "Stream Project", key: "stream-app")
       @client_application = @project.client_applications.create!(name: "Stream App", key: "stream-app")
-      @policy_set = @client_app&.policy_sets&.create!(name: "default", environment: "development", project: @project) ||
-                    @client_application.policy_sets.create!(name: "default", environment: "development", project: @project)
+      @project.project_providers.create!(provider: @stub_provider, environment: "development", is_default: true)
+      @policy_set = @client_application.policy_sets.create!(name: "default", environment: "development", project: @project)
       @policy_version = @policy_set.policy_versions.create!(version: "1", status: "draft")
       @policy_version.rules.create!(name: "max-input", kind: "max_message_chars", stage: "input", action: "block", priority: 10, config: { "max" => 50 })
       @policy_version.publish!
@@ -19,18 +23,18 @@ class StreamChatCompletionsTest < ActionDispatch::IntegrationTest
 
   test "streams a chat completion response" do
     post "/v1/chat/completions",
-      params: { model: "stub-v1", messages: [{ role: "user", content: "Hello" }], stream: true },
+      params: { messages: [{ role: "user", content: "Hello" }], stream: true },
       as: :json,
-      headers: { "Authorization" => "Bearer #{@plaintext_key}", "X-Netra-Provider" => "stub", "X-Netra-Org-Slug" => "test" }
+      headers: { "Authorization" => "Bearer #{@plaintext_key}", "X-Netra-Org-Slug" => "test" }
 
     assert_response :success
   end
 
   test "returns blocked error for oversized input" do
     post "/v1/chat/completions",
-      params: { model: "stub-v1", messages: [{ role: "user", content: "x" * 60 }] },
+      params: { messages: [{ role: "user", content: "x" * 60 }] },
       as: :json,
-      headers: { "Authorization" => "Bearer #{@plaintext_key}", "X-Netra-Provider" => "stub", "X-Netra-Org-Slug" => "test" }
+      headers: { "Authorization" => "Bearer #{@plaintext_key}", "X-Netra-Org-Slug" => "test" }
 
     assert_response :unprocessable_entity
     body = JSON.parse(response.body)

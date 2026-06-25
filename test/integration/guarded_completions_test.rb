@@ -6,9 +6,15 @@ class GuardedCompletionsTest < ActionDispatch::IntegrationTest
   setup do
     create_tenant!("test")
     Apartment::Tenant.switch("test") do
-      @client_application = ClientApplication.create!(name: "Test App", key: "test-app")
+      @stub_provider = Provider.find_or_create_by!(name: "Stub Provider") do |p|
+        p.provider_type = "stub"
+        p.default_model = "stub-v1"
+      end
+      @project = Project.create!(name: "Guarded Project", key: "guarded-project")
+      @client_application = @project.client_applications.create!(name: "Test App", key: "test-app")
       @agent = @client_application.agents.create!(name: "Assistant", identifier: "assistant")
-      @policy_set = @client_application.policy_sets.create!(name: "default", environment: "test")
+      @project.project_providers.create!(provider: @stub_provider, environment: "development", is_default: true)
+      @policy_set = @client_application.policy_sets.create!(name: "default", environment: "development")
       @policy_version = @policy_set.policy_versions.create!(version: "1", status: "draft")
       @policy_version.rules.create!(name: "max-input", kind: "max_message_chars", stage: "input", action: "block", priority: 10, config: { max: 50 })
       @policy_version.rules.create!(name: "json-output", kind: "json_format", stage: "output", action: "block", priority: 20, config: {})
@@ -20,8 +26,7 @@ class GuardedCompletionsTest < ActionDispatch::IntegrationTest
   test "returns a guarded stub response" do
     post "/v1/guarded_completions",
       params: {
-        application_key: "test-app", agent_identifier: "assistant", environment: "test",
-        provider: "stub", model: "stub-v1",
+        application_key: "test-app", agent_identifier: "assistant", environment: "development",
         messages: [{ role: "user", content: "Return JSON" }],
         options: { expected_output: { format: "json_object" } }
       },
@@ -36,8 +41,7 @@ class GuardedCompletionsTest < ActionDispatch::IntegrationTest
   test "blocks an oversized prompt" do
     post "/v1/guarded_completions",
       params: {
-        application_key: "test-app", agent_identifier: "assistant", environment: "test",
-        provider: "stub", model: "stub-v1",
+        application_key: "test-app", agent_identifier: "assistant", environment: "development",
         messages: [{ role: "user", content: "x" * 60 }]
       },
       as: :json,

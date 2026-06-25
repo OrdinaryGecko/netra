@@ -23,8 +23,7 @@ module V1
         )
       else
         render json: OpenAi::ChatCompletionResponse.new(
-          result:,
-          requested_model: chat_completion_params[:model]
+          result:
         ).as_json, status: :ok
       end
     rescue ActiveRecord::RecordNotFound => e
@@ -51,13 +50,10 @@ module V1
     end
 
     def normalized_payload
-      project = Current.project
       {
         application_key: client_application.key,
         agent_identifier: agent&.identifier,
         environment: request.headers["X-Netra-Environment"].to_s.presence || "development",
-        provider: request.headers["X-Netra-Provider"].to_s.presence || project&.upstream_provider.presence || "openai",
-        model: chat_completion_params[:model],
         metadata: {},
         options: normalized_options,
         messages: Array(chat_completion_params[:messages]).map { |message| message.to_h.symbolize_keys }
@@ -74,7 +70,6 @@ module V1
 
     def chat_completion_params
       params.permit(
-        :model,
         :stream,
         response_format: [:type],
         messages: %i[role content]

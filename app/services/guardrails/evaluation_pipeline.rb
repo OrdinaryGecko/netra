@@ -56,14 +56,15 @@ module Guardrails
     private
 
     def build_request!(policy_versions:)
+      resolved = resolve_provider
       GuardrailRequest.create!(
         client_application: @client_application,
         project: @project,
         agent: @agent,
         provider_config: provider_config,
         environment:,
-        provider: @request_payload[:provider],
-        model: @request_payload[:model],
+        provider: resolved&.provider_type,
+        model: resolved&.default_model,
         status: "pending",
         trace_id: @trace_id,
         idempotency_key: @request_payload[:idempotency_key],
@@ -152,8 +153,10 @@ module Guardrails
     end
 
     def provider_config
-      provider_configs = @project&.provider_configs || @client_application.provider_configs
-      provider_configs.find_by(provider: @request_payload[:provider], active: true)
+      resolved = resolve_provider
+      return unless resolved
+
+      @project&.provider_configs&.find_by(provider: resolved.provider_type, active: true)
     end
 
     def masked_response(provider_response, output_text, masked, mask_keywords: [], mask_replacement: "[REDACTED]")

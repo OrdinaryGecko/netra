@@ -45,9 +45,26 @@ Open `http://default.localhost:8080` and sign in:
 
 Seeds also print a runtime API key for testing guardrail requests.
 
+## Docker setup
+
+```bash
+cp .env.example .env
+# Edit .env — generate encryption keys with: bin/rails db:encryption:init
+docker compose up --build
+```
+
+- Frontend: `http://localhost:8080`
+- API: `http://localhost:3000`
+
+To seed the database, set `SEED_DB=true` in `.env`.
+
 ## Runtime API
 
-Authenticate with a runtime API key via `X-Api-Key` or `Authorization: Bearer` header. Include the org slug header for tenant routing.
+Two endpoints available — both apply guardrail policies before forwarding to the LLM provider. Provider and model are resolved from the project's environment configuration (set in project settings).
+
+### OpenAI-compatible (`/v1/chat/completions`)
+
+Drop-in replacement for OpenAI SDK. Just change the base URL and add headers.
 
 ```bash
 curl http://localhost:3000/v1/chat/completions \
@@ -56,27 +73,28 @@ curl http://localhost:3000/v1/chat/completions \
   -H "X-Netra-Org-Slug: default" \
   -H "X-Netra-Environment: development" \
   -d '{
-    "model": "stub-v1",
     "messages": [{"role": "user", "content": "Hello"}]
   }'
 ```
 
-## Admin API
+### Native API (`/v1/guarded_completions`)
 
-Authenticate with email/password → JWT token (returned in `Authorization` response header).
+Full control with idempotency, custom metadata, and agent tracking.
 
 ```bash
-# Login
-curl -s -D - -X POST http://localhost:3000/v1/auth/sign_in \
+curl http://localhost:3000/v1/guarded_completions \
+  -H "Authorization: Bearer YOUR_RUNTIME_KEY" \
   -H "Content-Type: application/json" \
   -H "X-Netra-Org-Slug: default" \
-  -d '{"user": {"email": "admin@netra.local", "password": "password"}}'
-
-# Use the JWT from the Authorization response header
-curl http://localhost:3000/v1/admin/projects \
-  -H "Authorization: Bearer JWT_TOKEN" \
-  -H "X-Netra-Org-Slug: default"
+  -d '{
+    "environment": "production",
+    "messages": [{"role": "user", "content": "Hello"}],
+    "idempotency_key": "req-abc-123",
+    "metadata": {"user_id": "u-123", "session_id": "s-456"}
+  }'
 ```
+
+Use the native API when you need retry-safe requests (idempotency), custom audit metadata, or agent-level tracking. Use the OpenAI-compatible endpoint for zero-code integration with existing OpenAI SDKs.
 
 ## Rule kinds
 

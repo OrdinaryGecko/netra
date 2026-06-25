@@ -36,13 +36,25 @@ module Guardrails
     end
 
     def build_provider
+      resolved = resolve_provider
       Providers::Factory.build(
-        provider: @request_payload[:provider],
-        model: @request_payload[:model],
+        provider: resolved.provider_type,
+        model: resolved.default_model,
         options: options,
-        base_url: @project&.upstream_base_url,
-        api_key: @project&.upstream_key
+        base_url: resolved.base_url,
+        api_key: resolved.api_key
       )
+    end
+
+    def resolve_provider
+      return unless @project
+
+      project_provider = @project.project_providers.for_environment(environment).defaults.first
+      unless project_provider
+        raise Guardrails::ProviderError, "No provider configured for project in #{environment} environment. Set one in project settings."
+      end
+
+      project_provider.provider
     end
 
     def composed_rules(resolved_sets)

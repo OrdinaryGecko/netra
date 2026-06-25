@@ -70,8 +70,6 @@ module V1
         application_key: @client_app&.key,
         agent_identifier: resolve_agent&.identifier,
         environment: request.headers["X-Netra-Environment"].to_s.presence || "development",
-        provider: project&.upstream_provider.presence || request.headers["X-Netra-Provider"].to_s.presence || "openai",
-        model: params[:model],
         metadata: {},
         options: normalized_options,
         messages: Array(params[:messages]).map { |m| m.to_unsafe_h.symbolize_keys }

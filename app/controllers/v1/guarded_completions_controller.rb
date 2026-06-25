@@ -48,8 +48,6 @@ module V1
         :application_key,
         :agent_identifier,
         :environment,
-        :provider,
-        :model,
         :idempotency_key,
         metadata: {},
         options: {},

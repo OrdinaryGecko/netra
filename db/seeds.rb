@@ -25,6 +25,7 @@ Apartment::Tenant.switch(organization.slug) do
   # Create stub provider
   stub_provider = Provider.find_or_create_by!(provider_type: "stub") do |p|
     p.name = "Stub (testing)"
+    p.default_model = "stub-v1"
     p.active = true
   end
 
