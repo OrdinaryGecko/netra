@@ -2,6 +2,13 @@
 
 AI guardrails middleware. Sits between your application and LLM providers, applies policy rules to requests and responses, and returns audited allow/block/mask decisions.
 
+## Live Demo
+
+Try it out: **https://netrademo.onrender.com**
+
+- Email: `admin@netrademo.onrender.com`
+- Password: `jvsfTS@3c#52z`
+
 ## Features
 
 - **OpenAI-compatible proxy** — drop-in replacement endpoint at `POST /v1/chat/completions`
