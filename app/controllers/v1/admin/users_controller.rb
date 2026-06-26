@@ -3,6 +3,7 @@ module V1
     class UsersController < Admin::BaseController
       before_action -> { authorize!(:manage_members) }, except: [:me, :update_profile, :update_password]
       before_action :authenticate_user!
+      before_action :authorize_demo_org!, only: [:update_profile, :update_password, :create, :update, :destroy]
 
       def me
         render json: serialize_user(current_user)

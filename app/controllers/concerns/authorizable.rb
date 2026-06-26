@@ -23,4 +23,19 @@ module Authorizable
 
     render_error("forbidden", status: :forbidden, details: ["Insufficient permissions"])
   end
+
+  def current_organization
+    @current_organization ||= Organization.find_by(slug: Apartment::Tenant.current)
+  end
+
+  def demo_org?
+    current_organization&.is_demo? || false
+  end
+
+  def authorize_demo_org!
+    return unless demo_org?
+    return if current_user&.role == "owner"
+
+    render_error("forbidden", status: :forbidden, details: ["This action is not available in demo organizations"])
+  end
 end

@@ -128,10 +128,18 @@ Use the native API when you need retry-safe requests (idempotency), custom audit
 Run a single command to create an org, owner user, and stub provider:
 
 ```bash
-bin/rails netra:create_org name="Acme Corp" slug=acme email=jane@acme.com password=changeme
+bin/rails netra:create_org name="Acme Corp" slug=acme owner_email=jane@acme.com owner_password=changeme
 ```
 
 Then visit `http://acme.localhost:8080` to sign in.
+
+### Demo organizations
+
+Demo orgs restrict non-owner users from editing profiles, inviting/removing members, or changing roles. The owner has full access.
+
+```bash
+bin/rails netra:create_demo_org name="Netra Demo" slug=netrademo owner_email=admin@example.com owner_password=password
+```
 
 ## Tech stack
 
