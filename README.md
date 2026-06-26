@@ -118,16 +118,10 @@ Use the native API when you need retry-safe requests (idempotency), custom audit
 
 ## Creating organizations
 
-Organizations are created from the backend. Each org gets its own PostgreSQL schema:
+Run a single command to create an org, owner user, and stub provider:
 
 ```bash
-bin/rails runner '
-org = Organization.create!(name: "Acme Corp", slug: "acme")
-Apartment::Tenant.create(org.slug)
-Apartment::Tenant.switch(org.slug) do
-  User.create!(name: "Jane", email: "jane@acme.com", password: "changeme", role: "owner")
-end
-'
+bin/rails netra:create_org name="Acme Corp" slug=acme email=jane@acme.com password=changeme
 ```
 
 Then visit `http://acme.localhost:8080` to sign in.
