@@ -34,3 +34,6 @@
 
 # Ignore local Codex tooling artifacts.
 .codex
+
+# Ignore generated Graphify artifacts.
+/graphify-out/
